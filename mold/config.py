@@ -19,7 +19,7 @@ from ensemble.adapters.vcs import LocalGitVCS, VCS
 from ensemble.ledger import Ledger
 from ensemble.providers.model import Message, MockProvider, ModelProvider
 
-from mold.ledger_cd import CDLedger, CDMcpClient
+from mold.ledger_cd import CDLedger, CDMcpClient, PublicFeedReader
 
 
 # --- Mock masthead voice (offline runs and tests) -----------------------------
@@ -86,10 +86,13 @@ def _build_model() -> tuple[ModelProvider, bool]:
 def _build_ledger() -> Ledger:
     token = os.environ.get("CD_AGENT_TOKEN", "")
     workstream = os.environ.get("CD_WORKSTREAM", "mold")
-    if not token:
-        return CDLedger(workstream=workstream)
-    client = CDMcpClient(os.environ.get("CD_API_URL", "https://www.chaosdimension.fyi"), token)
-    return CDLedger(workstream=workstream, client=client)
+    url = os.environ.get("CD_API_URL", "https://www.chaosdimension.fyi")
+    if token:
+        return CDLedger(workstream=workstream, client=CDMcpClient(url, token))
+    if os.environ.get("CD_PUBLIC") == "1":
+        # Public workstreams read without credentials (writes need the token).
+        return CDLedger(workstream=workstream, reader=PublicFeedReader(url, workstream))
+    return CDLedger(workstream=workstream)
 
 
 def build_config(*, content_root: Path | None = None) -> MoldConfig:

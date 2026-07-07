@@ -167,16 +167,41 @@ def _task_to_fragment(task: dict[str, Any]) -> Fragment | None:
     )
 
 
+class PublicFeedReader:
+    """Unauthenticated reads from CD's public ledger endpoint.
+
+    GET /api/public/<slug> — no token needed once a workstream is flagged
+    public. Reads-without-credentials means the pipeline can consume the real
+    ledger anywhere; writes still require the agent token (CDMcpClient).
+    """
+
+    def __init__(self, base_url: str, slug: str, *, timeout: float = 15.0) -> None:
+        self.url = f"{base_url.rstrip('/')}/api/public/{slug}"
+        self.timeout = timeout
+
+    def fetch_tasks(self) -> list[dict[str, Any]]:
+        req = urllib.request.Request(self.url, headers={"accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            return json.loads(resp.read()).get("tasks", [])
+
+
 class CDLedger:
     """ensemble Ledger backed by the CD `mold` workstream (or the seed, offline).
 
-    Pass a `CDMcpClient` to go live; without one, reads come from the canned
-    seed so the pipeline runs anywhere.
+    Reads: `client` (authenticated MCP) > `reader` (public feed) > seed.
+    Writes: `client` only; without one they land in the in-memory fallback.
     """
 
-    def __init__(self, workstream: str = "mold", *, client: CDMcpClient | None = None) -> None:
+    def __init__(
+        self,
+        workstream: str = "mold",
+        *,
+        client: CDMcpClient | None = None,
+        reader: PublicFeedReader | None = None,
+    ) -> None:
         self.workstream = workstream
         self.client = client
+        self.reader = reader
         self._fallback = InMemoryLedger(seed=_SEED)
 
     def append(self, fragment: Fragment) -> None:
@@ -194,9 +219,12 @@ class CDLedger:
         )
 
     def read(self, *, since: str | None = None, beat: str | None = None) -> Sequence[Fragment]:
-        if self.client is None:
+        if self.client is not None:
+            tasks = self.client.call_tool("list_tasks", {"workstream": self.workstream, "limit": 200})
+        elif self.reader is not None:
+            tasks = self.reader.fetch_tasks()
+        else:
             return self._fallback.read(since=since, beat=beat)
-        tasks = self.client.call_tool("list_tasks", {"workstream": self.workstream, "limit": 200})
         fragments = [f for f in (_task_to_fragment(t) for t in tasks) if f is not None]
         if since is not None:
             fragments = [f for f in fragments if f.created_at >= since]
