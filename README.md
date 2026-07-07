@@ -99,13 +99,23 @@ tests/
 ## Run it
 
 ```bash
-uv sync                       # resolves ensemble as an editable sibling checkout
-uv run python -m mold.slice   # offline: mock model + seeded ledger → commits to terrarium (qa)
-uv run pytest                 # end-to-end slice test on a throwaway repo
+uv sync                          # resolves ensemble as an editable sibling checkout
+uv run python -m mold.run_issue  # publish one issue end to end → terrarium (qa)
+uv run pytest                    # full-pipeline tests on a throwaway repo
 ```
 
-Swapping the mock model for Claude, or the seeded ledger for live Chaos
-Dimension, is a one-line change in [`mold/config.py`](mold/config.py).
+With no environment set, the whole pipeline runs **offline** (mock model +
+seeded ledger). Bindings are env-driven — set them and the same command goes
+live:
+
+| env | effect |
+|---|---|
+| `ANTHROPIC_API_KEY` | authors write with Claude (`MOLD_MODEL`, default `claude-sonnet-5`) |
+| `CD_AGENT_TOKEN` | ledger reads/writes go to Chaos Dimension (`CD_WORKSTREAM=mold`) |
+| `MOLD_CONTENT_ROOT` | path to the terrarium checkout |
+| `MOLD_PROMOTE=1` | fast-forward `prod` to `qa` after a successful publish |
+
+All wiring lives in one file: [`mold/config.py`](mold/config.py).
 
 ## Running on a droplet
 
@@ -124,11 +134,16 @@ shipped" failure. Details in [ops/README.md](ops/README.md).
 
 ## Status
 
-Vertical slice runs green end-to-end on mocks: **Planning → Critic → Editor →
-Markdown committed to terrarium (qa)**. Next, per the specs in Chaos Dimension:
-the design-production engine (primitive kit + composer + vision pass), the
-taste-critic discriminator, the Suno trend surveyor (MERT/CLAP), Verify, and
-Vercel deploy.
+The full pipeline runs end to end: **Planning → Critic → Editor → Art
+Director (starter primitive kit: colonization / collision / agar / decay,
+composed under taboo memory) → Verify (copyright wall, doctrine, links) →
+Publish (issue page + archive + drift-state → qa, optional prod promotion)**.
+Model and ledger go live via env (Claude / Chaos Dimension); everything runs
+offline on mocks otherwise.
+
+Next, per the specs in Chaos Dimension: the taste-critic discriminator
+(warm-start human-pick), the vision pass on rendered pixels, the Suno trend
+surveyor (MERT/CLAP), and more masthead voices.
 
 ## License
 

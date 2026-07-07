@@ -13,11 +13,14 @@ cd "$MOLD_ROOT/mold"
 git -C "$MOLD_ROOT/terrarium" diff --quiet || { echo "terrarium tree dirty; refusing to run (heal first)"; exit 75; }
 git -C "$MOLD_ROOT/terrarium" fetch --quiet origin || true
 
-# The pipeline entrypoint. For now this is the vertical slice; it becomes
-# `python -m mold.run_issue` as stages (design/verify/deploy) land.
-"$UV" run python -m mold.slice
+# Full pipeline: planning -> authors -> editor -> design -> verify -> publish.
+# MOLD_PROMOTE=1 (in /etc/mold/mold.env) also fast-forwards prod.
+"$UV" run python -m mold.run_issue
 
-# Push the qa branch so Vercel builds the preview.
-git -C "$MOLD_ROOT/terrarium" push --quiet origin qa || { echo "push failed"; exit 1; }
+# Push so Vercel deploys: qa = preview, prod = production.
+git -C "$MOLD_ROOT/terrarium" push --quiet origin qa || { echo "qa push failed"; exit 1; }
+if [ "${MOLD_PROMOTE:-0}" = "1" ]; then
+  git -C "$MOLD_ROOT/terrarium" push --quiet origin prod || { echo "prod push failed"; exit 1; }
+fi
 
 echo "issue run complete"

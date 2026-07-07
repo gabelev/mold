@@ -27,7 +27,11 @@ class EditorAgent(Agent):
     def perceive(self, context: Mapping[str, Any]) -> Perception:
         planning = context.get("planning")
         authors: Sequence[Artifact] = context.get("authors", [])
-        return Perception(data={"planning": planning, "authors": list(authors)})
+        return Perception(data={
+            "planning": planning,
+            "authors": list(authors),
+            "issue_id": context.get("issue_id", "000"),
+        })
 
     def decide(self, perception: Perception) -> Decision:
         return Decision(data=perception.data)
@@ -36,7 +40,7 @@ class EditorAgent(Agent):
         planning: Artifact = decision.data["planning"]
         authors: list[Artifact] = decision.data["authors"]
         theme = planning.metadata.get("theme") or "UNTITLED"
-        issue_id = "000"
+        issue_id = decision.data["issue_id"]
 
         parts = [
             f"# MOLD — Issue {issue_id}: {theme}",
