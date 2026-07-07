@@ -22,14 +22,22 @@ chown "$MOLD_USER:$MOLD_USER" "$MOLD_ROOT" /var/lib/mold
 echo "==> uv (per-user, as $MOLD_USER)"
 sudo -u "$MOLD_USER" bash -c 'command -v ~/.local/bin/uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -q'
 
-echo "==> repos"
+echo "==> repos (clone https; terrarium pushes over ssh via deploy key)"
 for repo in "${REPOS[@]}"; do
   if [ -d "$MOLD_ROOT/$repo/.git" ]; then
     sudo -u "$MOLD_USER" git -C "$MOLD_ROOT/$repo" pull --ff-only
   else
-    sudo -u "$MOLD_USER" git clone "git@github.com:$GITHUB_OWNER/$repo.git" "$MOLD_ROOT/$repo"
+    sudo -u "$MOLD_USER" git clone "https://github.com/$GITHUB_OWNER/$repo.git" "$MOLD_ROOT/$repo"
   fi
 done
+sudo -u "$MOLD_USER" git -C "$MOLD_ROOT/terrarium" remote set-url --push origin "git@github.com:$GITHUB_OWNER/terrarium.git"
+sudo -u "$MOLD_USER" git -C "$MOLD_ROOT/terrarium" config user.name "mold-bot"
+sudo -u "$MOLD_USER" git -C "$MOLD_ROOT/terrarium" config user.email "bot@mold.zine"
+
+echo "==> deploy key (add the pubkey below to gabelev/terrarium with WRITE access)"
+sudo -u "$MOLD_USER" bash -c '[ -f ~/.ssh/id_ed25519 ] || (mkdir -p ~/.ssh && ssh-keygen -t ed25519 -N "" -q -f ~/.ssh/id_ed25519 -C "mold-droplet")'
+sudo -u "$MOLD_USER" bash -c 'ssh-keyscan -H github.com 2>/dev/null >> ~/.ssh/known_hosts'
+sudo -u "$MOLD_USER" cat "/home/$MOLD_USER/.ssh/id_ed25519.pub"
 
 echo "==> python deps"
 sudo -u "$MOLD_USER" bash -c "cd $MOLD_ROOT/mold && ~/.local/bin/uv sync"
