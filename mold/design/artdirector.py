@@ -16,6 +16,7 @@ from __future__ import annotations
 import html as html_mod
 import json
 import re
+from pathlib import Path
 from typing import Any, Mapping
 
 from ensemble.agent import Agent, Artifact, Decision, Perception, Persona
@@ -240,17 +241,20 @@ def _paragraphs(text: str) -> str:
     return "\n".join(f"<p>{_inline(p)}</p>" for p in paras)
 
 
-def _render_page(issue_id: str, theme: str, editors_note: str,
-                 authors: list[Artifact], css: str, accent: str) -> str:
-    theme_esc = html_mod.escape(theme)
-    accent_hex = PALETTE.get(accent, PALETTE["viridian"])
-    sections = []
+def _sections_html(authors: list[Artifact]) -> str:
+    """The per-piece DOM contract shared by template and fallback shells.
+
+    Primitives target these hooks: section ids piece-0..N, .kicker, .headline
+    (with data-text for collision doubling), .dek, .body. A template restyles
+    them freely but must keep the class names.
+    """
+    out = []
     for i, a in enumerate(authors):
         byline = html_mod.escape(a.metadata.get("byline", "Staff"))
         headline = html_mod.escape(a.metadata.get("headline", byline))
         dek = html_mod.escape(a.metadata.get("dek", ""))
         dek_html = f'\n    <p class="dek">{dek}</p>' if dek else ""
-        sections.append(f"""
+        out.append(f"""
   <section id="piece-{i}" class="piece">
     <p class="kicker">{byline}</p>
     <h2 class="headline" data-text="{headline}">{headline}</h2>{dek_html}
@@ -258,6 +262,35 @@ def _render_page(issue_id: str, theme: str, editors_note: str,
 {_paragraphs(a.body)}
     </div>
   </section>""")
+    return "".join(out)
+
+
+def _render_page(issue_id: str, theme: str, editors_note: str,
+                 authors: list[Artifact], css: str, accent: str) -> str:
+    theme_esc = html_mod.escape(theme)
+    accent_hex = PALETTE.get(accent, PALETTE["viridian"])
+
+    # The page's STAGE is human territory (authored on Claude Design, like the
+    # archive chrome); the Art Director composes onto it. With a template at
+    # mold/templates/issue.html the composed primitives, sections, and issue
+    # data are injected into it; the built-in shell below is the fallback.
+    template_path = Path(__file__).resolve().parents[1] / "templates" / "issue.html"
+    if template_path.exists():
+        note_html = (
+            f'<aside class="note"><p>{html_mod.escape(editors_note)}</p></aside>'
+            if editors_note else ""
+        )
+        return (
+            template_path.read_text()
+            .replace("{{THEME}}", theme_esc)
+            .replace("{{ISSUE_ID}}", issue_id)
+            .replace("{{EDITORS_NOTE}}", note_html)
+            .replace("{{SECTIONS}}", _sections_html(authors))
+            .replace("{{COMPOSED_CSS}}", css)
+            .replace("{{ACCENT_HEX}}", accent_hex)
+        )
+
+    sections = [_sections_html(authors)]
 
     note_html = (
         f'\n  <aside class="note"><p>{html_mod.escape(editors_note)}</p></aside>'
