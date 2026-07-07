@@ -46,6 +46,21 @@ def _mock_masthead(messages: Sequence[Message]) -> str:
             "in order — what one week called decay, this week is calling a "
             "genre. That is the whole story of culture, petri or otherwise."
         )
+    if "Editor of MOLD" in system:
+        return (
+            '{"title": "CULTURE", "editors_note": "The field is thin and it shows. '
+            'What precipitated is what we grew.", "pieces": ['
+            '{"headline": "Unwelcome Success", "dek": "A verdict on a colony that calls itself ambient."}, '
+            '{"headline": "The Field Is a Dish", "dek": "What one week calls decay the next calls a genre."}]}'
+        )
+    if "Art Director of MOLD" in system:
+        return (
+            '{"accent": "chartreuse", "rationale": "Contempt gets its type attacked; '
+            'fascination gets colonized.", "assignments": ['
+            '{"section": "piece-0", "primitive": "collision", "params": {"angle": -7.0, "overlap": 0.42}}, '
+            '{"section": "piece-1", "primitive": "colonization", "params": {"coverage": 0.75, '
+            '"base_frequency": 0.02, "accent": "chartreuse"}}]}'
+        )
     if "taste-critic" in system:
         return "PASS — enacts its stances with actual risk; does not read as templated."
     return "[mock]"

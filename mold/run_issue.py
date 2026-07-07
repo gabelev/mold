@@ -33,8 +33,8 @@ def main() -> int:
     verify = ctx["verify"]
     result = ctx["publish"]
 
-    print(f"theme: {planning.metadata['theme']!r} "
-          f"(precipitated from cluster {planning.metadata['cluster_label']!r})")
+    print(f"theme: {ctx['editor'].metadata['theme']!r} "
+          f"(named last; precipitated from cluster {planning.metadata['cluster_label']!r})")
     for w in verify.metadata["warnings"]:
         print(f"  warn: {w}")
     if not result.ok:
