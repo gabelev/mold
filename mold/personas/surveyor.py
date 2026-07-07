@@ -37,7 +37,11 @@ class SurveyorAgent(Agent):
         stories = planning.metadata.get("stories", []) if planning else []
         mine = next((s for s in stories if s["assigned_to"] == "the-surveyor"), None)
         theme = planning.metadata.get("theme") if planning else None
-        return Perception(data={"theme": theme, "story": mine})
+        return Perception(data={
+            "theme": theme,
+            "story": mine,
+            "revision_note": context.get("revision_note"),
+        })
 
     def decide(self, perception: Perception) -> Decision:
         return Decision(data=perception.data)
@@ -46,13 +50,17 @@ class SurveyorAgent(Agent):
         theme = decision.data.get("theme") or "untitled"
         story = decision.data.get("story")
         seed = story["seed"] if story else "the week's field"
-        body = self.model.complete(
-            messages(
-                self.persona.base_prompt,
-                f"Issue theme: {theme}. Write a short field survey grounded in "
-                f"this ledger observation (describe/link, never reproduce): {seed}",
-            )
+        task = (
+            f"Issue theme: {theme}. Write a short field survey grounded in "
+            f"this ledger observation (describe/link, never reproduce): {seed}"
         )
+        if decision.data.get("revision_note"):
+            task += (
+                f"\n\nREVISION — your previous draft failed the taste gate: "
+                f"{decision.data['revision_note']}. Rewrite with a harder, more "
+                f"specific claim; kill those tells."
+            )
+        body = self.model.complete(messages(self.persona.base_prompt, task))
         return Artifact(
             kind="survey",
             body=body,

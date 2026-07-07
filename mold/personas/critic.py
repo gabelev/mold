@@ -34,7 +34,11 @@ class CriticAgent(Agent):
         # Take the first story assigned to the critic.
         stories = planning.metadata.get("stories", []) if planning else []
         mine = next((s for s in stories if s["assigned_to"] == "the-critic"), None)
-        return Perception(data={"theme": theme, "story": mine})
+        return Perception(data={
+            "theme": theme,
+            "story": mine,
+            "revision_note": context.get("revision_note"),
+        })
 
     def decide(self, perception: Perception) -> Decision:
         return Decision(data=perception.data)
@@ -44,13 +48,17 @@ class CriticAgent(Agent):
         story = decision.data.get("story")
         seed = story["seed"] if story else "the week's subject"
         stance = "contempt"  # drives form-follows-opinion downstream in design
-        body = self.model.complete(
-            messages(
-                self.persona.base_prompt,
-                f"Issue theme: {theme}. Write a short verdict grounded in this "
-                f"ledger seed (describe/quote/link, never reproduce): {seed}",
-            )
+        task = (
+            f"Issue theme: {theme}. Write a short verdict grounded in this "
+            f"ledger seed (describe/quote/link, never reproduce): {seed}"
         )
+        if decision.data.get("revision_note"):
+            task += (
+                f"\n\nREVISION — your previous draft failed the taste gate: "
+                f"{decision.data['revision_note']}. Rewrite with a harder, more "
+                f"specific stance; kill those tells."
+            )
+        body = self.model.complete(messages(self.persona.base_prompt, task))
         return Artifact(
             kind="review",
             body=body,

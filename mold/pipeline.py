@@ -26,6 +26,7 @@ from mold.config import MoldConfig
 from mold.design import ArtDirectorAgent
 from mold.design.constraints import pick_constraints
 from mold.personas import CriticAgent, EditorAgent, PlanningAgent, SurveyorAgent
+from mold.prose import ProseTellJudge
 from mold.publish import issue_files, load_taboo_signatures
 from mold.taste import build_discriminator, candidate_view
 from mold.verify import VerificationAgent
@@ -57,10 +58,27 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
     def planning_stage(ctx: MutableMapping[str, Any]) -> Artifact:
         return planner.run(ctx)
 
+    prose_judge = ProseTellJudge(cfg.model)
+
+    def _gated(agent) -> Any:
+        """The content mirror: copy gets one regeneration with its tells named;
+        a second failure ships with the dissent logged (the zine must ship)."""
+        def run(c: MutableMapping[str, Any]) -> Artifact:
+            artifact = agent.run(c)
+            verdict = prose_judge.evaluate({"text": artifact.body})
+            if not verdict.passed:
+                artifact = agent.run({**c, "revision_note": verdict.rationale})
+                verdict = prose_judge.evaluate({"text": artifact.body})
+                if not verdict.passed:
+                    artifact.metadata = dict(artifact.metadata)
+                    artifact.metadata["prose_dissent"] = verdict.rationale
+            return artifact
+        return run
+
     def authors_stage(ctx: MutableMapping[str, Any]) -> list[Artifact]:
         stages = [
-            Stage(name="the-critic", fn=lambda c: critic.run(c)),
-            Stage(name="the-surveyor", fn=lambda c: surveyor.run(c)),
+            Stage(name="the-critic", fn=_gated(critic)),
+            Stage(name="the-surveyor", fn=_gated(surveyor)),
         ]
         results = fan_out(stages, ctx)
         return list(results.values())

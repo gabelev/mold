@@ -10,6 +10,8 @@ dependencies = ["ensemble"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# The listening apparatus (MERT/CLAP + MIR). Heavy; only needed on the GPU box.
+listen = ["torch", "transformers", "librosa", "soundfile"]
 
 [build-system]
 requires = ["hatchling"]
