@@ -180,9 +180,17 @@ class PublicFeedReader:
         self.timeout = timeout
 
     def fetch_tasks(self) -> list[dict[str, Any]]:
-        req = urllib.request.Request(self.url, headers={"accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            return json.loads(resp.read()).get("tasks", [])
+        last_err: Exception | None = None
+        for attempt in range(4):  # the ledger read gates the whole run; be patient
+            req = urllib.request.Request(self.url, headers={"accept": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.loads(resp.read()).get("tasks", [])
+            except (urllib.error.URLError, json.JSONDecodeError) as e:
+                last_err = e
+                import time
+                time.sleep(min(2 ** attempt * 2, 20))
+        raise RuntimeError(f"public ledger unreachable: {last_err}") from last_err
 
 
 class CDLedger:

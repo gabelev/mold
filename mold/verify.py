@@ -10,6 +10,7 @@ Checks the rendered issue BEFORE anything is committed:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Any, Mapping
@@ -63,11 +64,16 @@ class _Audit(HTMLParser):
             self._open.pop()
 
 
+_MD_LEAK = re.compile(r"<p>[^<]{0,40}(\*\*|^#{1,3} |\[[^\]]+\]\(https?://)", re.M)
+
+
 def audit_html(page: str) -> tuple[list[str], list[str]]:
     """Return (errors, warnings) for one rendered issue page."""
     auditor = _Audit()
     auditor.feed(page)
     errors, warnings = list(auditor.errors), list(auditor.warnings)
+    if _MD_LEAK.search(page):
+        errors.append("render: raw markdown leaked into the DOM (** / # / [](...) visible as text)")
     if not page.lstrip().lower().startswith("<!doctype html"):
         errors.append("structure: missing doctype")
     if not auditor.has_title:

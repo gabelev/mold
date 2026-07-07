@@ -38,6 +38,10 @@ class VerificationFailed(RuntimeError):
     """The rendered issue failed the correctness audit; nothing was committed."""
 
 
+class EmptyField(RuntimeError):
+    """The ledger precipitated nothing; there is no issue to make this week."""
+
+
 def _fresh_taboo(cfg: MoldConfig) -> TabooMemory:
     # Each candidate composes under its own copy so candidates don't pollute
     # each other's this-cycle log; all share the same forbidden set.
@@ -56,22 +60,36 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
     discriminator = build_discriminator(cfg.model, forbidden)
 
     def planning_stage(ctx: MutableMapping[str, Any]) -> Artifact:
-        return planner.run(ctx)
+        planning = planner.run(ctx)
+        if not planning.metadata.get("stories"):
+            raise EmptyField("no cluster precipitated from the ledger — feed the field")
+        return planning
 
     prose_judge = ProseTellJudge(cfg.model)
 
+    def _copy_problem(artifact: Artifact) -> str | None:
+        """One combined gate: taste tells + degenerate length."""
+        words = len(artifact.body.split())
+        if words < 60:
+            return f"draft is {words} words — too thin to be a piece; write a full one"
+        if words > 1600:
+            return f"draft is {words} words — an essay, not a zine piece; cut it hard"
+        verdict = prose_judge.evaluate({"text": artifact.body})
+        return None if verdict.passed else verdict.rationale
+
     def _gated(agent) -> Any:
-        """The content mirror: copy gets one regeneration with its tells named;
-        a second failure ships with the dissent logged (the zine must ship)."""
+        """The content mirror: copy gets one regeneration with its problems
+        named; a second failure ships with the dissent logged (the zine must
+        ship — dissent is signal, not a blocker)."""
         def run(c: MutableMapping[str, Any]) -> Artifact:
             artifact = agent.run(c)
-            verdict = prose_judge.evaluate({"text": artifact.body})
-            if not verdict.passed:
-                artifact = agent.run({**c, "revision_note": verdict.rationale})
-                verdict = prose_judge.evaluate({"text": artifact.body})
-                if not verdict.passed:
+            problem = _copy_problem(artifact)
+            if problem:
+                artifact = agent.run({**c, "revision_note": problem})
+                problem = _copy_problem(artifact)
+                if problem:
                     artifact.metadata = dict(artifact.metadata)
-                    artifact.metadata["prose_dissent"] = verdict.rationale
+                    artifact.metadata["prose_dissent"] = problem
             return artifact
         return run
 

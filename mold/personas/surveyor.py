@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from ensemble.agent import Agent, Artifact, Decision, Perception, Persona
-from mold.personas.base import messages
+from mold.personas.base import PROSE_RULES, messages, strip_scaffolding
 
 BASE_PROMPT = (
     "You are the Culture writer of MOLD — the trend surveyor. You read the "
@@ -59,6 +59,7 @@ class SurveyorAgent(Agent):
             "observation itself; the listening apparatus will supply concrete "
             "subjects soon. Never fabricate a link; cite one only if the "
             "observation carries it."
+            + PROSE_RULES
         )
         if decision.data.get("revision_note"):
             task += (
@@ -66,7 +67,7 @@ class SurveyorAgent(Agent):
                 f"{decision.data['revision_note']}. Rewrite with a harder, more "
                 f"specific claim; kill those tells."
             )
-        body = self.model.complete(messages(self.persona.base_prompt, task))
+        body = strip_scaffolding(self.model.complete(messages(self.persona.base_prompt, task)))
         return Artifact(
             kind="survey",
             body=body,

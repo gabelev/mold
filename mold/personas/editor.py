@@ -109,11 +109,17 @@ class EditorAgent(Agent):
             f"stance: {a.metadata.get('stance', 'neutral')}) ---\n{a.body.strip()}"
             for i, a in enumerate(authors)
         )
-        reply = self.model.complete([
-            Message(role="system", content=self.persona.base_prompt),
-            Message(role="user", content=_EDIT_PROMPT.format(label=label, pieces=pieces, n=len(authors))),
-        ])
-        return _parse_json(reply)
+        prompt = _EDIT_PROMPT.format(label=label, pieces=pieces, n=len(authors))
+        for attempt in range(2):  # one retry on malformed JSON, then degrade
+            reply = self.model.complete([
+                Message(role="system", content=self.persona.base_prompt),
+                Message(role="user", content=prompt),
+            ])
+            parsed = _parse_json(reply)
+            if parsed is not None:
+                return parsed
+            prompt += "\n\nYour last reply was not valid JSON. Return ONLY the JSON object."
+        return None
 
 
 def _parse_json(raw: str) -> dict | None:

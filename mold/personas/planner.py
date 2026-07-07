@@ -46,7 +46,11 @@ class PlanningAgent(Agent):
             {"beat": f.beat, "seed": f.content, "assigned_to": _role_for_beat(f.beat)}
             for f in cluster.fragments
         ]
-        return Decision(data={"cluster_label": cluster.label, "density": cluster.density, "stories": stories})
+        return Decision(data={
+            "cluster_label": cluster.label,
+            "density": cluster.density,
+            "stories": _ensure_both_beats(stories),
+        })
 
     def execute(self, decision: Decision) -> Artifact:
         label = decision.data.get("cluster_label")
@@ -85,6 +89,23 @@ def _clean_title(raw: str) -> str:
 
 def _role_for_beat(beat: str) -> str:
     return "the-critic" if beat.startswith("verdict") else "the-surveyor"
+
+
+def _ensure_both_beats(stories: list[dict]) -> list[dict]:
+    """No masthead voice starves. A thin field often clusters on one beat only;
+    if a role has no story, reassign it the strongest fragment (preferring one
+    the other role isn't already using) rather than handing it a placeholder —
+    a real observation with the wrong beat beats an empty seed every time."""
+    if not stories:
+        return stories
+    for role in ("the-critic", "the-surveyor"):
+        if any(s["assigned_to"] == role for s in stories):
+            continue
+        # Donate the fragment fewest voices are already working from.
+        taken = [s["seed"] for s in stories]
+        donor = min(stories, key=lambda s: taken.count(s["seed"]))
+        stories.append({**donor, "assigned_to": role, "reassigned": True})
+    return stories
 
 
 def _planning_md(name: str, label: str, density: float, stories: list) -> str:

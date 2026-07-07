@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from ensemble.agent import Agent, Artifact, Decision, Perception, Persona
-from mold.personas.base import messages
+from mold.personas.base import PROSE_RULES, messages, strip_scaffolding
 
 BASE_PROMPT = (
     "You are The Critic of MOLD. You deliver a verdict on ONE work — an AI track, "
@@ -56,6 +56,7 @@ class CriticAgent(Agent):
             "that are not in it. If the seed lacks a concrete subject, review "
             "the observation itself — an idea can get a verdict too. Never "
             "fabricate a link; cite one only if the seed carries it."
+            + PROSE_RULES
         )
         if decision.data.get("revision_note"):
             task += (
@@ -63,7 +64,7 @@ class CriticAgent(Agent):
                 f"{decision.data['revision_note']}. Rewrite with a harder, more "
                 f"specific stance; kill those tells."
             )
-        body = self.model.complete(messages(self.persona.base_prompt, task))
+        body = strip_scaffolding(self.model.complete(messages(self.persona.base_prompt, task)))
         return Artifact(
             kind="review",
             body=body,

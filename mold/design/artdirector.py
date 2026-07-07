@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import html as html_mod
 import json
+import re
 from typing import Any, Mapping
 
 from ensemble.agent import Agent, Artifact, Decision, Perception, Persona
@@ -151,15 +152,22 @@ class ArtDirectorAgent(Agent):
             )
             for name in self.library.names()
         )
-        reply = self.model.complete([
-            Message(role="system", content=self.persona.base_prompt),
-            Message(role="user", content=_DIRECTION_PROMPT.format(
-                theme=theme, constraint=self.constraint, pieces=pieces,
-                kit=kit, accents=list(GAMUT["accents"]),
-            )),
-        ])
         from mold.personas.editor import _parse_json
-        return _parse_json(reply)
+
+        prompt = _DIRECTION_PROMPT.format(
+            theme=theme, constraint=self.constraint, pieces=pieces,
+            kit=kit, accents=list(GAMUT["accents"]),
+        )
+        for attempt in range(2):  # one retry on malformed JSON, then fall back
+            reply = self.model.complete([
+                Message(role="system", content=self.persona.base_prompt),
+                Message(role="user", content=prompt),
+            ])
+            parsed = _parse_json(reply)
+            if parsed is not None:
+                return parsed
+            prompt += "\n\nYour last reply was not valid JSON. Return ONLY the JSON object."
+        return None
 
     def _validate(
         self, proposal: dict | None, sections: list[dict]
@@ -211,9 +219,25 @@ class ArtDirectorAgent(Agent):
 
 # -- page shell -----------------------------------------------------------------
 
+_MD_LINK = re.compile(r"\[([^\]]{1,120})\]\((https://[^)\s]+)\)")
+_MD_STRONG = re.compile(r"\*\*([^*\n]+)\*\*")
+_MD_EM = re.compile(r"(?<!\*)\*([^*\n]+)\*(?!\*)")
+
+
+def _inline(text: str) -> str:
+    """Escape everything, then re-admit the three markdown forms the prose
+    rules allow (links, bold, italics). Escape-first means nothing the model
+    writes can smuggle markup; https-only links per the copyright wall."""
+    esc = html_mod.escape(text)
+    esc = _MD_LINK.sub(r'<a href="\2" rel="noopener">\1</a>', esc)
+    esc = _MD_STRONG.sub(r"<strong>\1</strong>", esc)
+    esc = _MD_EM.sub(r"<em>\1</em>", esc)
+    return esc
+
+
 def _paragraphs(text: str) -> str:
     paras = [p.strip() for p in text.split("\n\n") if p.strip()]
-    return "\n".join(f"<p>{html_mod.escape(p)}</p>" for p in paras)
+    return "\n".join(f"<p>{_inline(p)}</p>" for p in paras)
 
 
 def _render_page(issue_id: str, theme: str, editors_note: str,

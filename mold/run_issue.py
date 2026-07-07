@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 
 from mold.config import build_config
-from mold.pipeline import VerificationFailed, build_pipeline
+from mold.pipeline import EmptyField, VerificationFailed, build_pipeline
 from mold.publish import next_issue_id, promote_qa_to_prod
 
 
@@ -27,6 +27,10 @@ def main() -> int:
         ctx = build_pipeline(cfg).run({"issue_id": issue_id})
     except VerificationFailed as e:
         print(f"VERIFICATION FAILED — nothing committed:\n{e}")
+        return 1
+    except EmptyField as e:
+        # No field, no issue — an empty zine is worse than a missed week.
+        print(f"FIELD EMPTY — no issue published: {e}")
         return 1
 
     planning = ctx["planning"]
