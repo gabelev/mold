@@ -1,0 +1,22 @@
+[Unit]
+Description=Mold daily ledger drop (surveyor beat)
+Wants=network-online.target
+After=network-online.target
+OnFailure=mold-heal@%n.service
+StartLimitIntervalSec=1h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+User=mold
+EnvironmentFile=/etc/mold/mold.env
+WorkingDirectory=/opt/mold/mold
+ExecStart=/opt/mold/mold/ops/run-ledger.sh
+TimeoutStartSec=30min
+# NOTE: Restart= on Type=oneshot requires systemd >= 254 (Ubuntu 24.04 = 255).
+Restart=on-failure
+RestartSec=120
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/opt/mold /var/lib/mold
+PrivateTmp=true

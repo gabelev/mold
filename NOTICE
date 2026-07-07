@@ -1,0 +1,28 @@
+mold
+Copyright (C) 2026 Gabe Lev and contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See the LICENSE file for the full text.
+
+mold is an instance of the ensemble framework (also AGPL-3.0-or-later).
+
+--------------------------------------------------------------------------------
+Third-party terms (enumerate as they are wired in)
+--------------------------------------------------------------------------------
+
+- Anthropic Claude (authoring + art direction): subject to Anthropic's usage
+  terms and acceptable-use policy. Model outputs are not covered by this
+  program's AGPL license.
+- Vision model (pixel critique): subject to its provider's terms.
+- MERT / CLAP (audio representation for the Suno surveyor): subject to their
+  respective model licenses.
+- Suno: surveyed under a strict copyright wall — described, quoted briefly, and
+  linked, NEVER reproduced or rehosted. Audio is fetched transiently for feature
+  extraction and discarded; only derived embeddings + metadata + links persist.
+- Fonts and typographic references used in issues: governed by their individual
+  licenses; enumerate per font as adopted.
+
+Issue *content* (prose, layouts, drifting state) is published in the terrarium
+content repository under CC0-1.0, separate from this AGPL program.

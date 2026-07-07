@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly Mold issue (Mon 06:00 UTC)
+
+[Timer]
+OnCalendar=Mon *-*-* 06:00:00 UTC
+# If the droplet was down at the scheduled time, run on next boot.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

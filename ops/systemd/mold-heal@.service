@@ -1,0 +1,10 @@
+[Unit]
+Description=Mold healer for %i
+
+[Service]
+Type=oneshot
+# Root: needs `systemctl start` to re-kick failed units. heal.sh does nothing
+# else privileged; the repos it resets are owned by the mold user.
+EnvironmentFile=/etc/mold/mold.env
+ExecStart=/opt/mold/mold/ops/heal.sh %i
+PrivateTmp=true
