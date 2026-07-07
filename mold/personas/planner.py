@@ -53,9 +53,13 @@ class PlanningAgent(Agent):
         if label is None:
             return Artifact(kind="planning", body="# No theme precipitated\n", metadata={"theme": None})
         # The model NAMES what precipitated (it does not choose the topic).
-        name = self.model.complete(
-            messages(self.persona.base_prompt, f"The densest cluster this week is about: {label!r}. Name the issue.")
-        ).strip()
+        name = _clean_title(self.model.complete(
+            messages(
+                self.persona.base_prompt,
+                f"The densest cluster this week is about: {label!r}. Name the issue. "
+                "Reply with the name only: 1-3 words, no markdown, no quotes, no explanation.",
+            )
+        ))
         stories = decision.data["stories"]
         body = _planning_md(name, label, decision.data["density"], stories)
         return Artifact(
@@ -63,6 +67,20 @@ class PlanningAgent(Agent):
             body=body,
             metadata={"theme": name, "cluster_label": label, "stories": stories},
         )
+
+
+def _clean_title(raw: str) -> str:
+    """A live model wraps names in markdown/quotes/preamble; the title must be
+    plain text — it lands in <title>, filenames, and commit messages."""
+    line = raw.strip().splitlines()[0] if raw.strip() else "UNTITLED"
+    line = line.strip(" \t*_`\"'#:.!").strip()
+    # "The issue is called: X" style preamble -> keep what follows the colon.
+    if ":" in line and len(line.split(":", 1)[1].strip()) >= 3:
+        tail = line.split(":", 1)[1].strip(" \t*_`\"'#:.!").strip()
+        if tail and len(tail.split()) <= 4:
+            line = tail
+    words = line.split()
+    return " ".join(words[:4]) if words else "UNTITLED"
 
 
 def _role_for_beat(beat: str) -> str:

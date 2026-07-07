@@ -52,7 +52,13 @@ class SurveyorAgent(Agent):
         seed = story["seed"] if story else "the week's field"
         task = (
             f"Issue theme: {theme}. Write a short field survey grounded in "
-            f"this ledger observation (describe/link, never reproduce): {seed}"
+            f"this ledger observation (describe/link, never reproduce): {seed}\n\n"
+            "GROUNDING: write only from what the observation actually contains. "
+            "Do not invent named scenes, tracks, artists, platforms' specifics, "
+            "or statistics that are not in it. Interpret and argue from the "
+            "observation itself; the listening apparatus will supply concrete "
+            "subjects soon. Never fabricate a link; cite one only if the "
+            "observation carries it."
         )
         if decision.data.get("revision_note"):
             task += (

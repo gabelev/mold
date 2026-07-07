@@ -50,7 +50,12 @@ class CriticAgent(Agent):
         stance = "contempt"  # drives form-follows-opinion downstream in design
         task = (
             f"Issue theme: {theme}. Write a short verdict grounded in this "
-            f"ledger seed (describe/quote/link, never reproduce): {seed}"
+            f"ledger seed (describe/quote/link, never reproduce): {seed}\n\n"
+            "GROUNDING: write only from what the seed actually contains. Do not "
+            "invent specific works, tracks, transcripts, statistics, or events "
+            "that are not in it. If the seed lacks a concrete subject, review "
+            "the observation itself — an idea can get a verdict too. Never "
+            "fabricate a link; cite one only if the seed carries it."
         )
         if decision.data.get("revision_note"):
             task += (
