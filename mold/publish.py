@@ -34,8 +34,35 @@ def issue_files(issue: Artifact, design: Artifact, content_root: Path) -> dict[s
         f"issues/{issue_id}/planning.md": issue.metadata["planning_body"],
         "index.html": _archive_index(content_root, issue_id, issue.metadata["theme"]),
     }
+    # Warm-start instrument: every candidate treatment ships alongside the
+    # chosen one so a human can overrule the discriminator (mold.pick) and the
+    # pick becomes preference data.
+    for letter, page in design.metadata.get("candidate_pages", {}).items():
+        files[f"issues/{issue_id}/candidates/{letter}.html"] = page
+    if design.metadata.get("candidate_pages"):
+        files[f"issues/{issue_id}/candidates/CHOICE.md"] = _choice_md(design)
     files.update(_drift_files(content_root, issue.metadata["theme"], design))
     return files
+
+
+def _choice_md(design: Artifact) -> str:
+    chosen = design.metadata.get("chosen_candidate", "?")
+    dissent = design.metadata.get("dissent", "")
+    lines = [
+        "# Candidate treatments",
+        "",
+        f"Discriminator chose **{chosen}** "
+        f"(constraint `{design.metadata.get('constraint')}`, "
+        f"variant {design.metadata.get('variant')}).",
+        "",
+        "To overrule (warm-start preference data):",
+        "",
+        "    uv run python -m mold.pick <issue> <letter>",
+        "",
+    ]
+    if dissent:
+        lines += ["Shipped WITH dissent (no candidate passed the full panel):", "", f"> {dissent}", ""]
+    return "\n".join(lines)
 
 
 def _drift_files(content_root: Path, theme: str, design: Artifact) -> dict[str, str]:

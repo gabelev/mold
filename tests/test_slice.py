@@ -42,13 +42,17 @@ def test_full_pipeline_end_to_end(tmp_path: Path) -> None:
     assert ctx["planning"].metadata["theme"] == "CULTURE"
     assert ctx["planning"].metadata["cluster_label"] == "culture"
 
-    # Editor assembled the copy; Art Director rendered the page.
+    # Both masthead voices wrote; editor assembled; Art Director rendered.
+    assert len(ctx["authors"]) == 2
     assert "MOLD — Issue 000: CULTURE" in ctx["editor"].body
     page = ctx["design"].body
     assert page.startswith("<!doctype html")
+    assert "The Critic" in page and "The Culture Writer" in page
     assert "feTurbulence" in page                       # CSS/SVG-first
     assert "<audio" not in page and "<img" not in page  # copyright wall / no raster
     assert ctx["design"].metadata["moves"]              # taboo memory fed
+    # The discriminator chose among N candidates.
+    assert ctx["design"].metadata["chosen_candidate"] in "abc"
 
     # Verification passed.
     assert ctx["verify"].metadata["ok"], ctx["verify"].body
@@ -61,6 +65,8 @@ def test_full_pipeline_end_to_end(tmp_path: Path) -> None:
         "issues/000/index.html",
         "issues/000/index.md",
         "issues/000/planning.md",
+        "issues/000/candidates/a.html",   # warm-start: all treatments kept
+        "issues/000/candidates/CHOICE.md",
         "index.html",              # regenerated archive
         "state/the-critic.json",   # drift bumped
         "state/taboo.json",        # this issue's moves -> next issue's taboo

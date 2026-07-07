@@ -2,11 +2,16 @@
 
 The full deterministic DAG:
 
-    planning -> authors (parallel fan-out) -> editor -> design -> verify -> publish
+    planning -> authors (parallel fan-out) -> editor
+             -> design (N candidates -> taste discriminator) -> verify -> publish
 
-Verify is a hard gate: a failed audit raises and nothing is committed. Publish
-writes the issue + regenerated archive + bumped drift-state to terrarium on the
-qa branch; promotion to prod is the caller's move (see mold.publish).
+Design emits N candidate treatments (different constraint injections + variant
+jitter); the taste discriminator kills the safe ones. If EVERY candidate is too
+safe, one riskier regeneration round runs; if the panel still passes nothing,
+the least-dissented candidate ships with the dissent logged (a weekly zine must
+ship — the dissent is the training signal).
+
+Verify stays a hard gate: a failed audit raises and nothing is committed.
 """
 
 from __future__ import annotations
@@ -19,40 +24,88 @@ from ensemble.state.taboo import Move, TabooMemory
 
 from mold.config import MoldConfig
 from mold.design import ArtDirectorAgent
-from mold.personas import CriticAgent, EditorAgent, PlanningAgent
+from mold.design.constraints import pick_constraints
+from mold.personas import CriticAgent, EditorAgent, PlanningAgent, SurveyorAgent
 from mold.publish import issue_files, load_taboo_signatures
+from mold.taste import build_discriminator, candidate_view
 from mold.verify import VerificationAgent
+
+N_CANDIDATES = 3
 
 
 class VerificationFailed(RuntimeError):
     """The rendered issue failed the correctness audit; nothing was committed."""
 
 
+def _fresh_taboo(cfg: MoldConfig) -> TabooMemory:
+    # Each candidate composes under its own copy so candidates don't pollute
+    # each other's this-cycle log; all share the same forbidden set.
+    return TabooMemory(
+        forbidden=[Move(kind="design", signature=s) for s in load_taboo_signatures(cfg.content_root)]
+    )
+
+
 def build_pipeline(cfg: MoldConfig) -> Pipeline:
     planner = PlanningAgent(cfg.model, cfg.ledger)
     critic = CriticAgent(cfg.model)
+    surveyor = SurveyorAgent(cfg.model)
     editor = EditorAgent(cfg.model)
-    # Last issue's design moves are this issue's forbidden list.
-    taboo = TabooMemory(
-        forbidden=[Move(kind="design", signature=s) for s in load_taboo_signatures(cfg.content_root)]
-    )
-    art_director = ArtDirectorAgent(cfg.model, taboo=taboo)
     verifier = VerificationAgent(cfg.model)
+    forbidden = load_taboo_signatures(cfg.content_root)
+    discriminator = build_discriminator(cfg.model, forbidden)
 
     def planning_stage(ctx: MutableMapping[str, Any]) -> Artifact:
         return planner.run(ctx)
 
     def authors_stage(ctx: MutableMapping[str, Any]) -> list[Artifact]:
-        # The masthead fans out in parallel; one author today, more soon.
-        stages = [Stage(name="the-critic", fn=lambda c: critic.run(c))]
+        stages = [
+            Stage(name="the-critic", fn=lambda c: critic.run(c)),
+            Stage(name="the-surveyor", fn=lambda c: surveyor.run(c)),
+        ]
         results = fan_out(stages, ctx)
         return list(results.values())
 
     def editor_stage(ctx: MutableMapping[str, Any]) -> Artifact:
         return editor.run(ctx)
 
+    def _compose_candidates(ctx: MutableMapping[str, Any], *, risk_boost: int = 0) -> list[Artifact]:
+        issue_id = ctx.get("issue_id", "000")
+        constraints = pick_constraints(issue_id, N_CANDIDATES)
+        candidates = []
+        for i, constraint in enumerate(constraints):
+            agent = ArtDirectorAgent(
+                cfg.model,
+                taboo=_fresh_taboo(cfg),
+                constraint=constraint,
+                variant=i + risk_boost,
+            )
+            candidates.append(agent.run(ctx))
+        return candidates
+
     def design_stage(ctx: MutableMapping[str, Any]) -> Artifact:
-        return art_director.run(ctx)
+        candidates = _compose_candidates(ctx)
+        idx = discriminator.choose([candidate_view(a) for a in candidates])
+        dissent_note = ""
+        if idx < 0:
+            # Everything was too well-behaved: regenerate RISKIER, once.
+            candidates = _compose_candidates(ctx, risk_boost=2)
+            idx = discriminator.choose([candidate_view(a) for a in candidates])
+        if idx < 0:
+            # Ship the least-dissented candidate; log the dissent as signal.
+            results = [discriminator.evaluate(candidate_view(a)) for a in candidates]
+            idx = min(range(len(results)), key=lambda i: len(results[i].dissenters))
+            dissent_note = "; ".join(
+                f"{v.grounding}: {v.rationale}" for v in results[idx].dissenters
+            )
+        chosen = candidates[idx]
+        chosen.metadata = dict(chosen.metadata)
+        chosen.metadata["dissent"] = dissent_note
+        # Keep every candidate page for the warm-start human pick.
+        chosen.metadata["candidate_pages"] = {
+            chr(ord("a") + i): a.body for i, a in enumerate(candidates)
+        }
+        chosen.metadata["chosen_candidate"] = chr(ord("a") + idx)
+        return chosen
 
     def verify_stage(ctx: MutableMapping[str, Any]) -> Artifact:
         report = verifier.run(ctx)

@@ -37,6 +37,17 @@ def _mock_masthead(messages: Sequence[Message]) -> str:
             "spreads like something growing on a surface it was never offered. "
             "Verdict: unwelcome success. It is good the way mold is good."
         )
+    if "Culture writer" in system:
+        return (
+            "The field moved this week and nobody steered it. The washed-out "
+            "vocal texture is not a preset anymore, it is a scene: dozens of "
+            "tracks a day converging on the same over-cultured smear, each one "
+            "linking back to the last like hyphae. Follow the links and listen "
+            "in order — what one week called decay, this week is calling a "
+            "genre. That is the whole story of culture, petri or otherwise."
+        )
+    if "taste-critic" in system:
+        return "PASS — enacts its stances with actual risk; does not read as templated."
     return "[mock]"
 
 

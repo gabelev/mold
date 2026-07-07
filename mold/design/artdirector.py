@@ -17,8 +17,9 @@ from ensemble.agent import Agent, Artifact, Decision, Perception, Persona
 from ensemble.design.composer import Composer
 from ensemble.state.taboo import TabooMemory
 
+from mold.design.constraints import constrained_stance_map
 from mold.design.palette import PALETTE
-from mold.design.primitives import STANCE_MAP, build_library
+from mold.design.primitives import build_library
 
 BASE_PROMPT = (
     "You are the Art Director of MOLD. You art-direct each issue in CSS/SVG and "
@@ -31,10 +32,20 @@ class ArtDirectorAgent(Agent):
     """Composes the issue page. Model calls arrive later (Phase 2, vision pass);
     Phase 1 composition is deterministic kit-recombination under taboo memory."""
 
-    def __init__(self, model, *, taboo: TabooMemory | None = None, **kw: Any) -> None:
+    def __init__(
+        self,
+        model,
+        *,
+        taboo: TabooMemory | None = None,
+        constraint: str = "house",
+        variant: int = 0,
+        **kw: Any,
+    ) -> None:
         super().__init__(Persona(name="art-director", base_prompt=BASE_PROMPT), model, **kw)
         self.library = build_library()
         self.composer = Composer(self.library, taboo=taboo)
+        self.constraint = constraint
+        self.variant = variant
 
     def perceive(self, context: Mapping[str, Any]) -> Perception:
         return Perception(data={
@@ -58,7 +69,10 @@ class ArtDirectorAgent(Agent):
         issue_id: str = decision.data["issue_id"]
         theme = planning.metadata.get("theme") or "UNTITLED"
 
-        composition = self.composer.compose(decision.data["sections"], STANCE_MAP)
+        stance_map = constrained_stance_map(self.constraint, self.variant)
+        composition = self.composer.compose(
+            decision.data["sections"], stance_map, constraint=self.constraint
+        )
         css = composition.render(self.library)
         page = _render_page(issue_id, theme, authors, css)
 
@@ -68,7 +82,15 @@ class ArtDirectorAgent(Agent):
             metadata={
                 "theme": theme,
                 "issue_id": issue_id,
+                "constraint": self.constraint,
+                "variant": self.variant,
                 "moves": [m.signature for m in composition.moves],
+                # Structured description for the taste discriminator's judges.
+                "assignments": [
+                    {"section": a.section, "stance": a.stance,
+                     "primitive": a.primitive, "params": dict(a.params)}
+                    for a in composition.assignments
+                ],
             },
         )
 

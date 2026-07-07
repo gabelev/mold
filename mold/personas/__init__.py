@@ -6,6 +6,7 @@ self-state lives in terrarium so it is public and diff-able.
 
 from mold.personas.planner import PlanningAgent
 from mold.personas.critic import CriticAgent
+from mold.personas.surveyor import SurveyorAgent
 from mold.personas.editor import EditorAgent
 
-__all__ = ["PlanningAgent", "CriticAgent", "EditorAgent"]
+__all__ = ["PlanningAgent", "CriticAgent", "SurveyorAgent", "EditorAgent"]
