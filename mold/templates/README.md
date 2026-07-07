@@ -11,3 +11,22 @@ publisher substitutes:
 
 Everything else in the file ships verbatim. No template here = the built-in
 fallback page in `mold/publish.py` is used.
+
+## `issue.html` — the issue page's stage
+
+The weekly Art Director composes primitives ONTO this template; the template
+is the stage, not the performance. Placeholders:
+
+- `{{THEME}}` — issue title (escaped text)
+- `{{ISSUE_ID}}` — zero-padded number
+- `{{EDITORS_NOTE}}` — `<aside class="note"><p>…</p></aside>` or empty
+- `{{SECTIONS}}` — the pieces, as `<section id="piece-N" class="piece">` blocks
+  containing `.kicker` (byline), `.headline` (h2, with `data-text` duplicate
+  for collision effects), optional `.dek`, and `.body` (paragraphs)
+- `{{COMPOSED_CSS}}` — the Art Director's per-issue primitive CSS; put it in a
+  `<style>` AFTER the template's own styles so composition wins
+- `{{ACCENT_HEX}}` — the issue's dominant accent color
+
+MUST keep: the section class names above (primitives target them) and an SVG
+`<filter id="bloom">` def (the colonization primitive references `url(#bloom)`).
+No template here = the built-in dark shell in `mold/design/artdirector.py`.
