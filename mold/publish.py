@@ -91,7 +91,14 @@ def load_taboo_signatures(content_root: Path) -> list[str]:
 
 
 def _archive_index(content_root: Path, new_issue_id: str, new_theme: str) -> str:
-    """Regenerate the root archive page listing every issue."""
+    """Regenerate the root archive page listing every issue.
+
+    The page chrome is HUMAN territory (per the design-engine spec: the fixed
+    shell is authored, e.g. on Claude Design — only per-issue composition is
+    autonomous). If the instance ships a template at mold/templates/archive.html
+    it is used verbatim with {{ISSUE_LIST}} (and optional {{ISSUE_COUNT}})
+    replaced; the built-in page below is only the fallback until one exists.
+    """
     issues_dir = content_root / "issues"
     entries: dict[str, str] = {}
     if issues_dir.exists():
@@ -105,6 +112,14 @@ def _archive_index(content_root: Path, new_issue_id: str, new_theme: str) -> str
         f'    <li><a href="issues/{i}/index.html"><span class="num">{i}</span> {html_mod.escape(t)}</a></li>'
         for i, t in sorted(entries.items(), reverse=True)
     )
+
+    template_path = Path(__file__).resolve().parent / "templates" / "archive.html"
+    if template_path.exists():
+        return (
+            template_path.read_text()
+            .replace("{{ISSUE_LIST}}", rows)
+            .replace("{{ISSUE_COUNT}}", str(len(entries)))
+        )
     return f"""<!doctype html>
 <html lang="en">
 <head>
