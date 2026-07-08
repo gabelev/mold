@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import html as html_mod
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -18,10 +19,20 @@ from ensemble.agent import Artifact
 from mold.design.palette import PALETTE
 
 
-def next_issue_id(content_root: Path) -> str:
-    """Next zero-padded issue number from what's already in terrarium."""
+_ISSUE_DIR = re.compile(r"^\d{3}(\.\d+)?$")
+
+
+def _issue_dirs(content_root: Path) -> list[str]:
     issues_dir = content_root / "issues"
-    existing = [int(p.name) for p in issues_dir.glob("[0-9]*") if p.name.isdigit()] if issues_dir.exists() else []
+    if not issues_dir.exists():
+        return []
+    return sorted(p.name for p in issues_dir.iterdir() if _ISSUE_DIR.match(p.name))
+
+
+def next_issue_id(content_root: Path) -> str:
+    """Next zero-padded issue number. Dotted interstitials (000.1 — hand-made
+    between-issues) count toward their integer: after 000.1 comes 001."""
+    existing = [int(name.split(".")[0]) for name in _issue_dirs(content_root)]
     return f"{(max(existing) + 1 if existing else 0):03d}"
 
 
@@ -99,13 +110,10 @@ def _archive_index(content_root: Path, new_issue_id: str, new_theme: str) -> str
     it is used verbatim with {{ISSUE_LIST}} (and optional {{ISSUE_COUNT}})
     replaced; the built-in page below is only the fallback until one exists.
     """
-    issues_dir = content_root / "issues"
     entries: dict[str, str] = {}
-    if issues_dir.exists():
-        for p in sorted(issues_dir.glob("[0-9]*")):
-            if p.name.isdigit():
-                title = _title_from_md(p / "index.md") or p.name
-                entries[p.name] = title
+    for name in _issue_dirs(content_root):
+        title = _title_from_md(content_root / "issues" / name / "index.md") or name
+        entries[name] = title
     entries[new_issue_id] = new_theme
 
     rows = "\n".join(
