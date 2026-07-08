@@ -101,6 +101,14 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
         verdict = prose_judge.evaluate({"text": artifact.body})
         return (None, False) if verdict.passed else (verdict.rationale, False)
 
+    def _subject_evidence_fallback(c: MutableMapping[str, Any], subject: str) -> list:
+        """Deep-verify can come back empty (search hiccup, undatable results).
+        The broad scan already passed the recency window — reuse its rows for
+        this subject before letting the gate abort the run."""
+        broad = c.get("perceive", [])
+        tokens = {t.lower() for t in subject.replace("'", " ").split() if len(t) > 3}
+        return [e for e in broad if tokens & {t.lower() for t in e.title.replace("'", " ").split()}]
+
     def _gated(agent, role: str) -> Any:
         def run(c: MutableMapping[str, Any]) -> Artifact:
             story = _story_for(c, role)
@@ -108,6 +116,8 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
             evidence = cfg.perceiver.deep_verify(
                 subject, cycle_id=c.get("issue_id", "")
             ) if subject else []
+            if not evidence and subject:
+                evidence = _subject_evidence_fallback(c, subject)
             ctx = {**c, "evidence": evidence}
 
             artifact = agent.run(ctx)
