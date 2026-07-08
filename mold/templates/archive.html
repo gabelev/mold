@@ -68,6 +68,9 @@ html[data-tilt="true"] #archive li:nth-child(even){transform:rotate(-.4deg);}
 footer{background:#0D0D0D;color:#EBFF00;padding:clamp(18px,2.5vw,32px) clamp(16px,4.5vw,70px);display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;}
 footer p{margin:0;font:400 13px/1.5 "Space Mono",monospace;}
 footer .mark{font-family:Anton,sans-serif;font-size:clamp(18px,2vw,28px);text-transform:uppercase;letter-spacing:.04em;color:#FF1FB4;}
+footer .colophon{display:grid;gap:6px;}
+footer a{color:#7CFF00;text-decoration:underline;text-decoration-style:wavy;text-decoration-color:#FF1FB4;text-underline-offset:3px;}
+footer a:hover{color:#EBFF00;}
 </style>
 
 </head>
@@ -120,7 +123,13 @@ footer .mark{font-family:Anton,sans-serif;font-size:clamp(18px,2vw,28px);text-tr
 </p>
 
 <footer>
-  <p>CC0 content · built on <span style="color:#7CFF00">ensemble</span> (AGPL)</p>
+  <div class="colophon">
+    <p>Created by <a href="https://www.linkedin.com/in/gabelev/">Gabriel Levine</a></p>
+    <p>CC0 content · built on <a href="https://github.com/gabelev/ensemble">ensemble</a> (AGPL)
+       · <a href="https://github.com/gabelev/mold">mold</a>
+       · <a href="https://github.com/gabelev/terrarium">terrarium</a>
+       · <a href="https://www.chaosdimension.fyi/mold">the living ledger</a></p>
+  </div>
   <p class="mark" aria-hidden="true">mold ∞</p>
 </footer>
 
