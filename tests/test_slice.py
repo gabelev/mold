@@ -39,12 +39,19 @@ def test_full_pipeline_end_to_end(tmp_path: Path) -> None:
     ctx = build_pipeline(cfg).run({"issue_id": issue_id})
 
     # Theme emerged from the ledger, was not hardcoded into planning.
-    assert ctx["planning"].metadata["theme"] == "CULTURE"
+    assert ctx["planning"].metadata["theme"] == "CULTURE"  # working title only; Namer renames last
     assert ctx["planning"].metadata["cluster_label"] == "culture"
 
-    # Both masthead voices wrote; editor assembled; Art Director rendered.
+    # Both masthead voices wrote; editor assembled; the Namer named LAST.
     assert len(ctx["authors"]) == 2
-    assert "MOLD — Issue 000: CULTURE" in ctx["editor"].body
+    assert "MOLD — Issue 000: Empty Chair" in ctx["editor"].body
+    # Groundedness: every piece cites a real, linked artifact from PERCEIVE.
+    for a in ctx["authors"]:
+        assert "https://" in a.body
+        assert a.metadata["evidence_urls"]
+    # The attributed retrospective note names an actual artifact.
+    assert "A note from the Editor" in ctx["editor"].body
+    assert "IngaRose" in ctx["editor"].metadata["editors_note"]
     page = ctx["design"].body
     assert page.startswith("<!doctype html")
     assert "The Critic" in page and "The Culture Writer" in page
@@ -67,6 +74,8 @@ def test_full_pipeline_end_to_end(tmp_path: Path) -> None:
         "issues/000/planning.md",
         "issues/000/candidates/a.html",   # warm-start: all treatments kept
         "issues/000/candidates/CHOICE.md",
+        "issues/000/provenance.json",     # PERCEIVE's audit trail
+        "issues/000/claude-design-brief.md",  # the manual-fork handoff
         "index.html",              # regenerated archive
         "state/the-critic.json",   # drift bumped
         "state/taboo.json",        # this issue's moves -> next issue's taboo
@@ -75,7 +84,7 @@ def test_full_pipeline_end_to_end(tmp_path: Path) -> None:
 
     state = json.loads((content_root / "state/the-critic.json").read_text())
     assert state["version"] == 1
-    assert state["residue"]["last_theme"] == "CULTURE"
+    assert state["residue"]["last_theme"] == "Empty Chair"
 
     # Promotion fast-forwards prod to qa.
     sha = promote_qa_to_prod(content_root)

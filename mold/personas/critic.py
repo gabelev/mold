@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from ensemble.agent import Agent, Artifact, Decision, Perception, Persona
-from mold.personas.base import PROSE_RULES, messages, strip_scaffolding
+from mold.personas.base import PROSE_RULES, evidence_block, messages, strip_scaffolding
 
 BASE_PROMPT = (
     "You are The Critic of MOLD. You deliver a verdict on ONE work — an AI track, "
@@ -18,7 +18,10 @@ BASE_PROMPT = (
     "allowed, even obligated, to pan things: vague praise is a tell. Describe and "
     "quote briefly and link; never reproduce the work. Write with a stance, not a "
     "summary. No hedging, no 'isn't just X it's Y', no rule-of-three, no gentle "
-    "positivity."
+    "positivity.\n"
+    "VOICE (yours, non-negotiable): sharp, cold, verdict-first. Short declarative "
+    "sentences. Open ON the verdict, never build to it. Zero warmth. You judge "
+    "one thing and you name it in the first sentence."
 )
 
 
@@ -37,6 +40,7 @@ class CriticAgent(Agent):
         return Perception(data={
             "theme": theme,
             "story": mine,
+            "evidence": list(context.get("evidence", [])),
             "revision_note": context.get("revision_note"),
         })
 
@@ -49,13 +53,14 @@ class CriticAgent(Agent):
         seed = story["seed"] if story else "the week's subject"
         stance = "contempt"  # drives form-follows-opinion downstream in design
         task = (
-            f"Issue theme: {theme}. Write a short verdict grounded in this "
-            f"ledger seed (describe/quote/link, never reproduce): {seed}\n\n"
-            "GROUNDING: write only from what the seed actually contains. Do not "
-            "invent specific works, tracks, transcripts, statistics, or events "
-            "that are not in it. If the seed lacks a concrete subject, review "
-            "the observation itself — an idea can get a verdict too. Never "
-            "fabricate a link; cite one only if the seed carries it."
+            f"Issue theme: {theme}. The ledger seed below is your LENS — a way "
+            f"of seeing — never your subject: {seed}\n\n"
+            f"{evidence_block(decision.data.get('evidence', []))}\n"
+            "Your verdict is on ONE real, named work from the evidence above. "
+            "Name it in the first sentence. Use the CURRENT facts (numbers, "
+            "dates) the evidence gives — no other facts exist. Cite at least "
+            "one source as a markdown link. Describe and quote briefly; never "
+            "reproduce lyrics or audio. Unsourced pieces are rejected."
             + PROSE_RULES
         )
         if decision.data.get("revision_note"):

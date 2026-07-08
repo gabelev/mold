@@ -33,7 +33,10 @@ class PlanningAgent(Agent):
         self.ledger = ledger
 
     def perceive(self, context: Mapping[str, Any]) -> Perception:
-        fragments = list(self.ledger.read())
+        # The field = the standing ledger + this cycle's broad-scan drops
+        # (PERCEIVE Pass 1), which arrive via context when no write token
+        # exists to land them in CD directly.
+        fragments = list(self.ledger.read()) + list(context.get("scan_fragments", []))
         cluster = precipitate_theme(fragments)  # densest cluster = emergent theme
         return Perception(data={"cluster": cluster, "fragment_count": len(fragments)})
 
@@ -42,8 +45,14 @@ class PlanningAgent(Agent):
         if cluster is None:
             return Decision(data={"theme_seed": None})
         # Stories are seeded by the beat of each fragment in the winning cluster.
+        # `subject` is what deep-verify PERCEIVE will pull current facts on.
         stories = [
-            {"beat": f.beat, "seed": f.content, "assigned_to": _role_for_beat(f.beat)}
+            {
+                "beat": f.beat,
+                "seed": f.content,
+                "subject": f.metadata.get("subject") or " ".join(f.content.split()[:8]),
+                "assigned_to": _role_for_beat(f.beat),
+            }
             for f in cluster.fragments
         ]
         return Decision(data={

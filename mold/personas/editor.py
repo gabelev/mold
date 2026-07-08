@@ -19,8 +19,16 @@ BASE_PROMPT = (
     "read the masthead's finished pieces and do the final edit: title the "
     "issue (responding to what was actually written — you name what "
     "precipitated, never invent a topic), give each piece a display headline "
-    "and a one-line dek, and write a 2-3 sentence editor's note. You do not "
-    "smooth the writers' edges and you never rewrite their copy."
+    "and a one-line dek, and write a short attributed editor's note. You do "
+    "not smooth the writers' edges and you never rewrite their copy.\n"
+    "VOICE (yours): meta and framing. You speak about the issue, not the "
+    "subjects; brief, plain, retrospective. You notice what grew; you never "
+    "perform criticism yourself.\n"
+    "THE NOTE IS RETROSPECTIVE REFLECTION, NOT DIRECTION: describe what "
+    "precipitated and what you noticed reading the finished pieces — never "
+    "'what this issue is about' as if you decided it. Name the actual works "
+    "the pieces cover (their real titles); stay concrete; no waxing about "
+    "growth in the abstract."
 )
 
 _EDIT_PROMPT = """The ledger's densest cluster this week was {label!r}. The masthead wrote:
@@ -80,7 +88,7 @@ class EditorAgent(Agent):
             "",
         ]
         if note:
-            parts += [f"> {note}", ""]
+            parts += ["## A note from the Editor", "", note, ""]
         parts += ["---", ""]
         for art in authors:
             byline = art.metadata.get("byline", "Staff")

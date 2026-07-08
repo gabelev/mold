@@ -30,28 +30,40 @@ def _mock_masthead(messages: Sequence[Message]) -> str:
         return "CULTURE"
     if "The Critic" in system:
         return (
-            "The track calls itself ambient but it is a colony. Three minutes of "
-            "washed-out vocal texture that nobody cultured on purpose and that is "
-            "exactly the point: it thrives in conditions no one tended. Described, "
-            "not reproduced — go hear it at the link and notice how the reverb "
-            "spreads like something growing on a surface it was never offered. "
-            "Verdict: unwelcome success. It is good the way mold is good."
+            "Verdict first: 'Celebrate Me' by IngaRose is a hit with nobody home. "
+            "Number one on iTunes in five countries, three hundred thousand TikTok "
+            "videos, and no author anywhere willing to claim it "
+            "([Forbes](https://www.forbes.com/sites/conormurray/2026/04/17/the-no-1-song-on-us-itunes-and-several-other-countries-is-ai-generated/)). "
+            "The song itself is frictionless. That is not the reviewable object. "
+            "The reviewable object is the vacancy: a chart-topper engineered so "
+            "that no one has to stand behind it. Judged as music, it passes. "
+            "Judged as a work, there is no one to judge. The verdict lands on an "
+            "empty chair, which is the point of the chair."
         )
     if "Culture writer" in system:
         return (
-            "The field moved this week and nobody steered it. The washed-out "
-            "vocal texture is not a preset anymore, it is a scene: dozens of "
-            "tracks a day converging on the same over-cultured smear, each one "
-            "linking back to the last like hyphae. Follow the links and listen "
-            "in order — what one week called decay, this week is calling a "
-            "genre. That is the whole story of culture, petri or otherwise."
+            "Somewhere on TikTok right now a woman is turning her landlord's "
+            "final email into a show tune. The text-to-song wave — real threads "
+            "fed into Suno, shared as bouncy numbers — quadrupled Suno's "
+            "downloads in a week and briefly made it the top music app in the US "
+            "and UK, and Suno leaned in with a screenshot-to-lyrics feature "
+            "([Rolling Stone](https://www.rollingstone.com/music/music-features/tiktok-ai-text-to-song-trend-1235567638/)). "
+            "The scene works because the fake show tune is an alibi: you get to "
+            "mean the grievance without owning the saying of it. The field found "
+            "a distancing device and is composing with it, thousands of times a "
+            "day, and the machine is the excuse that makes the feeling sayable."
         )
+    if "distinguishable voices" in system:
+        return "PASS — piece 1 is verdict-first and cold; piece 2 is reported, warm, field-level."
     if "Editor of MOLD" in system:
         return (
-            '{"title": "CULTURE", "editors_note": "The field is thin and it shows. '
-            'What precipitated is what we grew.", "pieces": ['
-            '{"headline": "Unwelcome Success", "dek": "A verdict on a colony that calls itself ambient."}, '
-            '{"headline": "The Field Is a Dish", "dek": "What one week calls decay the next calls a genre."}]}'
+            '{"title": "Empty Chair", "editors_note": "Reading the finished pieces, what '
+            'precipitated is deniability: the Critic found nobody home behind IngaRose\'s '
+            "'Celebrate Me', and the Culture Writer found thousands of people using "
+            'text-to-song as an alibi for their own words. Same vacancy, two scales.", '
+            '"pieces": ['
+            '{"headline": "A Hit With Nobody Home", "dek": "The #1 song in five countries and the empty chair behind it."}, '
+            '{"headline": "The Alibi Machine", "dek": "Text-to-song and the art of meaning it without owning it."}]}'
         )
     if "Art Director of MOLD" in system:
         return (
@@ -75,6 +87,9 @@ class MoldConfig:
     vcs: VCS
     content_root: Path
     live: bool  # True when running against the real model API
+    perceiver: "Perceiver"
+    provenance: "ProvenanceLog"
+    ledger_writable: bool  # True when a CD agent token can land fragments
 
 
 def _repo_root() -> Path:
@@ -111,14 +126,25 @@ def _build_ledger() -> Ledger:
 
 
 def build_config(*, content_root: Path | None = None) -> MoldConfig:
-    """Wire the adapters for one run (see module docstring for env knobs)."""
+    """Wire the adapters for one run (see module docstring for env knobs).
+
+    MOLD_PERCEIVE_WINDOW tunes the recency window in days (default 30;
+    launch/rebuild runs may widen, the weekly timer stays tight).
+    """
+    from mold.perception_web import ProvenanceLog, build_perceiver
+
     env_root = os.environ.get("MOLD_CONTENT_ROOT")
     terrarium = content_root or (Path(env_root) if env_root else _repo_root() / "terrarium")
     model, live = _build_model()
+    provenance = ProvenanceLog()
+    window = int(os.environ.get("MOLD_PERCEIVE_WINDOW", "30"))
     return MoldConfig(
         model=model,
         ledger=_build_ledger(),
         vcs=LocalGitVCS(terrarium, author="mold-bot <bot@mold.zine>"),
         content_root=terrarium,
         live=live,
+        perceiver=build_perceiver(live, model, provenance, window_days=window),
+        provenance=provenance,
+        ledger_writable=bool(os.environ.get("CD_AGENT_TOKEN")),
     )

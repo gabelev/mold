@@ -1,17 +1,18 @@
 """Assemble Mold's authoring pipeline from ensemble Stages + Mold agents.
 
-The full deterministic DAG:
+The full deterministic DAG (PERCEIVE per the design spec — mandatory, dated,
+sourced; an optional tool is a skipped tool):
 
-    planning -> authors (parallel fan-out) -> editor
-             -> design (N candidates -> taste discriminator) -> verify -> publish
+    perceive (broad scan) -> planning (theme precipitates)
+      -> authors (each: deep-verify PERCEIVE -> write -> prose + groundedness gates)
+      -> voice-differentiation gate
+      -> editor (reads finished pieces; Namer names LAST; attributed note)
+      -> design (N candidates -> taste discriminator)
+      -> verify -> publish (+ provenance record + Claude Design brief)
 
-Design emits N candidate treatments (different constraint injections + variant
-jitter); the taste discriminator kills the safe ones. If EVERY candidate is too
-safe, one riskier regeneration round runs; if the panel still passes nothing,
-the least-dissented candidate ships with the dissent logged (a weekly zine must
-ship — the dissent is the training signal).
-
-Verify stays a hard gate: a failed audit raises and nothing is committed.
+Teeth: groundedness failure after one regeneration ABORTS the run (unsourced
+= rejected; a missed week beats an ungrounded issue). Prose/voice failures
+regenerate once then ship with dissent logged. Verification stays a hard gate.
 """
 
 from __future__ import annotations
@@ -24,12 +25,16 @@ from ensemble.state.taboo import Move, TabooMemory
 
 from mold.config import MoldConfig
 from mold.design import ArtDirectorAgent
+from mold.design.brief import design_brief
 from mold.design.constraints import pick_constraints
+from mold.grounded import GroundednessFailed, audit_groundedness
+from mold.perception_web import BROAD_QUERIES, evidence_to_fragment
 from mold.personas import CriticAgent, EditorAgent, PlanningAgent, SurveyorAgent
 from mold.prose import ProseTellJudge
 from mold.publish import issue_files, load_taboo_signatures
 from mold.taste import build_discriminator, candidate_view
 from mold.verify import VerificationAgent
+from mold.voices import check_voices
 
 N_CANDIDATES = 3
 
@@ -43,8 +48,6 @@ class EmptyField(RuntimeError):
 
 
 def _fresh_taboo(cfg: MoldConfig) -> TabooMemory:
-    # Each candidate composes under its own copy so candidates don't pollute
-    # each other's this-cycle log; all share the same forbidden set.
     return TabooMemory(
         forbidden=[Move(kind="design", signature=s) for s in load_taboo_signatures(cfg.content_root)]
     )
@@ -58,6 +61,20 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
     verifier = VerificationAgent(cfg.model)
     forbidden = load_taboo_signatures(cfg.content_root)
     discriminator = build_discriminator(cfg.model, forbidden)
+    prose_judge = ProseTellJudge(cfg.model)
+
+    # -- PERCEIVE pass 1: broad scan ------------------------------------------
+
+    def perceive_stage(ctx: MutableMapping[str, Any]) -> list:
+        issue_id = ctx.get("issue_id", "000")
+        evidence = cfg.perceiver.broad_scan(BROAD_QUERIES, cycle_id=issue_id)
+        fragments = [evidence_to_fragment(e) for e in evidence]
+        if cfg.ledger_writable:
+            for f in fragments:
+                cfg.ledger.append(f)  # lands in CD; planning reads it back
+        else:
+            ctx["scan_fragments"] = fragments  # merge in-memory for this run
+        return evidence
 
     def planning_stage(ctx: MutableMapping[str, Any]) -> Artifact:
         planning = planner.run(ctx)
@@ -65,69 +82,100 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
             raise EmptyField("no cluster precipitated from the ledger — feed the field")
         return planning
 
-    prose_judge = ProseTellJudge(cfg.model)
+    # -- authors: deep-verify PERCEIVE + write + gates -------------------------
 
-    def _copy_problem(artifact: Artifact) -> str | None:
-        """One combined gate: taste tells + degenerate length."""
+    def _story_for(ctx: MutableMapping[str, Any], role: str) -> dict | None:
+        stories = ctx["planning"].metadata.get("stories", [])
+        return next((s for s in stories if s["assigned_to"] == role), None)
+
+    def _copy_problem(artifact: Artifact, evidence: list) -> tuple[str | None, bool]:
+        """(problem, is_groundedness). Groundedness failures are fatal on repeat."""
+        grounding = audit_groundedness(artifact.body, evidence)
+        if grounding:
+            return "; ".join(grounding), True
         words = len(artifact.body.split())
         if words < 60:
-            return f"draft is {words} words — too thin to be a piece; write a full one"
+            return f"draft is {words} words — too thin to be a piece; write a full one", False
         if words > 1600:
-            return f"draft is {words} words — an essay, not a zine piece; cut it hard"
+            return f"draft is {words} words — an essay, not a zine piece; cut it hard", False
         verdict = prose_judge.evaluate({"text": artifact.body})
-        return None if verdict.passed else verdict.rationale
+        return (None, False) if verdict.passed else (verdict.rationale, False)
 
-    def _gated(agent) -> Any:
-        """The content mirror: copy gets one regeneration with its problems
-        named; a second failure ships with the dissent logged (the zine must
-        ship — dissent is signal, not a blocker)."""
+    def _gated(agent, role: str) -> Any:
         def run(c: MutableMapping[str, Any]) -> Artifact:
-            artifact = agent.run(c)
-            problem = _copy_problem(artifact)
+            story = _story_for(c, role)
+            subject = story.get("subject", "") if story else ""
+            evidence = cfg.perceiver.deep_verify(
+                subject, cycle_id=c.get("issue_id", "")
+            ) if subject else []
+            ctx = {**c, "evidence": evidence}
+
+            artifact = agent.run(ctx)
+            artifact.metadata = dict(artifact.metadata)
+            artifact.metadata["evidence_urls"] = [e.url for e in evidence]
+
+            problem, fatal = _copy_problem(artifact, evidence)
             if problem:
-                artifact = agent.run({**c, "revision_note": problem})
-                problem = _copy_problem(artifact)
+                artifact = agent.run({**ctx, "revision_note": problem})
+                artifact.metadata = dict(artifact.metadata)
+                artifact.metadata["evidence_urls"] = [e.url for e in evidence]
+                problem, fatal = _copy_problem(artifact, evidence)
+                if problem and fatal:
+                    raise GroundednessFailed(
+                        f"{role}: {problem} — unsourced pieces do not ship"
+                    )
                 if problem:
-                    artifact.metadata = dict(artifact.metadata)
                     artifact.metadata["prose_dissent"] = problem
             return artifact
         return run
 
     def authors_stage(ctx: MutableMapping[str, Any]) -> list[Artifact]:
         stages = [
-            Stage(name="the-critic", fn=_gated(critic)),
-            Stage(name="the-surveyor", fn=_gated(surveyor)),
+            Stage(name="the-critic", fn=_gated(critic, "the-critic")),
+            Stage(name="the-surveyor", fn=_gated(surveyor, "the-surveyor")),
         ]
         results = fan_out(stages, ctx)
         return list(results.values())
 
+    # -- voice-differentiation gate --------------------------------------------
+
+    def voices_stage(ctx: MutableMapping[str, Any]) -> str:
+        authors: list[Artifact] = ctx["authors"]
+        ok, rationale = check_voices(cfg.model, authors)
+        if not ok:
+            # Regenerate the later voice with the collapse named; recheck once.
+            redo = _gated(surveyor, "the-surveyor")
+            authors[1] = redo({**ctx, "revision_note": f"voice collapse with the Critic: {rationale}. "
+                              "Write in YOUR register — wide, warm, field-level, no verdict-opening."})
+            ok, rationale = check_voices(cfg.model, authors)
+            if not ok:
+                authors[1].metadata = dict(authors[1].metadata)
+                authors[1].metadata["voice_dissent"] = rationale
+        return rationale
+
     def editor_stage(ctx: MutableMapping[str, Any]) -> Artifact:
         return editor.run(ctx)
+
+    # -- design -----------------------------------------------------------------
 
     def _compose_candidates(ctx: MutableMapping[str, Any], *, risk_boost: int = 0) -> list[Artifact]:
         issue_id = ctx.get("issue_id", "000")
         constraints = pick_constraints(issue_id, N_CANDIDATES)
-        candidates = []
-        for i, constraint in enumerate(constraints):
-            agent = ArtDirectorAgent(
-                cfg.model,
-                taboo=_fresh_taboo(cfg),
-                constraint=constraint,
-                variant=i + risk_boost,
-            )
-            candidates.append(agent.run(ctx))
-        return candidates
+        return [
+            ArtDirectorAgent(
+                cfg.model, taboo=_fresh_taboo(cfg), constraint=constraint, variant=i + risk_boost
+            ).run(ctx)
+            for i, constraint in enumerate(constraints)
+        ]
 
     def design_stage(ctx: MutableMapping[str, Any]) -> Artifact:
         candidates = _compose_candidates(ctx)
         idx = discriminator.choose([candidate_view(a) for a in candidates])
         dissent_note = ""
         if idx < 0:
-            # Everything was too well-behaved: regenerate RISKIER, once.
             candidates = _compose_candidates(ctx, risk_boost=2)
             idx = discriminator.choose([candidate_view(a) for a in candidates])
         if idx < 0:
-            # Ship the least-dissented candidate; log the dissent as signal.
             results = [discriminator.evaluate(candidate_view(a)) for a in candidates]
             idx = min(range(len(results)), key=lambda i: len(results[i].dissenters))
             dissent_note = "; ".join(
@@ -136,7 +184,6 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
         chosen = candidates[idx]
         chosen.metadata = dict(chosen.metadata)
         chosen.metadata["dissent"] = dissent_note
-        # Keep every candidate page for the warm-start human pick.
         chosen.metadata["candidate_pages"] = {
             chr(ord("a") + i): a.body for i, a in enumerate(candidates)
         }
@@ -151,17 +198,25 @@ def build_pipeline(cfg: MoldConfig) -> Pipeline:
 
     def publish_stage(ctx: MutableMapping[str, Any]):
         issue: Artifact = ctx["editor"]
+        issue_id = issue.metadata["issue_id"]
         files = issue_files(issue, ctx["design"], cfg.content_root)
+        # PERCEIVE provenance + the Claude Design manual-fork brief.
+        files[f"issues/{issue_id}/provenance.json"] = cfg.provenance.to_json()
+        files[f"issues/{issue_id}/claude-design-brief.md"] = design_brief(
+            issue, ctx["design"], ctx["authors"], load_taboo_signatures(cfg.content_root)
+        )
         return cfg.vcs.write_and_commit(
             files,
-            message=f"issue {issue.metadata['issue_id']}: {issue.metadata['theme']}",
+            message=f"issue {issue_id}: {issue.metadata['theme']}",
             branch="qa",
         )
 
     return (
         Pipeline()
+        .then("perceive", perceive_stage)
         .then("planning", planning_stage)
         .then("authors", authors_stage)
+        .then("voices", voices_stage)
         .then("editor", editor_stage)
         .then("design", design_stage)
         .then("verify", verify_stage)

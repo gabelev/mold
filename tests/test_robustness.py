@@ -54,8 +54,48 @@ def test_every_voice_gets_a_story() -> None:
     assert critic[0]["seed"] == "s1" and critic[0].get("reassigned")
 
 
+def test_groundedness_gate_rejects_abstraction() -> None:
+    """The exact Issue-000 failure mode: a polished essay about a slogan."""
+    from datetime import date, timedelta
+
+    from ensemble.perceive import Evidence
+
+    from mold.grounded import audit_groundedness
+
+    evidence = [Evidence(
+        title="IngaRose 'Celebrate Me'",
+        url="https://www.forbes.com/example", published=(date.today() - timedelta(days=5)).isoformat(),
+        summary="#1 on iTunes in five countries.", source="test",
+    )]
+    ungrounded = (
+        "The seed handed me a slogan and the slogan is wrong. Contamination is "
+        "just growth you did not authorize; every ruined thing is a successful "
+        "colonization by another culture's standards. The verdict is on the "
+        "idea itself, which curdles under inspection."
+    )
+    failures = audit_groundedness(ungrounded, evidence)
+    assert any("zero outbound links" in f for f in failures)
+    assert any("no named work" in f for f in failures)
+
+    grounded = (
+        "Verdict first: 'Celebrate Me' by IngaRose is a hit with nobody home "
+        "([Forbes](https://www.forbes.com/example)). Number one in five countries "
+        "and no author willing to claim it."
+    )
+    assert audit_groundedness(grounded, evidence) == []
+
+
 def test_empty_field_aborts_instead_of_publishing(tmp_path) -> None:
+    from ensemble.perceive import Perceiver
+
+    class _Blind:
+        name = "blind"
+
+        def search(self, query, *, now):
+            return []
+
     cfg = build_config(content_root=tmp_path)
-    cfg.ledger = InMemoryLedger(seed=())  # nothing accreted this week
+    cfg.ledger = InMemoryLedger(seed=())          # nothing accreted this week
+    cfg.perceiver = Perceiver([_Blind()])          # and the scan sees nothing
     with pytest.raises(EmptyField):
         build_pipeline(cfg).run({"issue_id": "000"})

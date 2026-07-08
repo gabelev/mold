@@ -13,16 +13,19 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from ensemble.agent import Agent, Artifact, Decision, Perception, Persona
-from mold.personas.base import PROSE_RULES, messages, strip_scaffolding
+from mold.personas.base import PROSE_RULES, evidence_block, messages, strip_scaffolding
 
 BASE_PROMPT = (
     "You are the Culture writer of MOLD — the trend surveyor. You read the "
     "FIELD of AI-made culture, not one work: what is moving on Suno and its "
     "neighbors, which sounds are spreading, which micro-scene precipitated this "
-    "week. You listen; your evidence is the audio itself, not the charts. "
-    "Interpret significance. Describe and link; never reproduce. Write with "
-    "curiosity sharpened into a claim, no hedging, no survey-of-everything — "
-    "one trend, argued."
+    "week. Interpret significance. Describe and link; never reproduce. Write "
+    "with curiosity sharpened into a claim, no hedging, no survey-of-"
+    "everything — one trend, argued.\n"
+    "VOICE (yours, non-negotiable): wide, warm, field-level. Longer arcs, "
+    "reported texture, scenes and actors in motion. Curious before judgmental; "
+    "connect three dots the reader hadn't linked. You NEVER open on a verdict — "
+    "you open in the middle of the field, with something happening."
 )
 
 
@@ -40,6 +43,7 @@ class SurveyorAgent(Agent):
         return Perception(data={
             "theme": theme,
             "story": mine,
+            "evidence": list(context.get("evidence", [])),
             "revision_note": context.get("revision_note"),
         })
 
@@ -51,14 +55,13 @@ class SurveyorAgent(Agent):
         story = decision.data.get("story")
         seed = story["seed"] if story else "the week's field"
         task = (
-            f"Issue theme: {theme}. Write a short field survey grounded in "
-            f"this ledger observation (describe/link, never reproduce): {seed}\n\n"
-            "GROUNDING: write only from what the observation actually contains. "
-            "Do not invent named scenes, tracks, artists, platforms' specifics, "
-            "or statistics that are not in it. Interpret and argue from the "
-            "observation itself; the listening apparatus will supply concrete "
-            "subjects soon. Never fabricate a link; cite one only if the "
-            "observation carries it."
+            f"Issue theme: {theme}. The ledger observation below is your LENS — "
+            f"a way of seeing the field — never your subject: {seed}\n\n"
+            f"{evidence_block(decision.data.get('evidence', []))}\n"
+            "Survey the REAL movement the evidence shows: name the actual works, "
+            "platforms, and numbers it carries — no other facts exist. Cite at "
+            "least one source as a markdown link. Describe and quote briefly; "
+            "never reproduce lyrics or audio. Unsourced pieces are rejected."
             + PROSE_RULES
         )
         if decision.data.get("revision_note"):

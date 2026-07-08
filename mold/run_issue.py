@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 
 from mold.config import build_config
+from mold.grounded import GroundednessFailed
 from mold.pipeline import EmptyField, VerificationFailed, build_pipeline
 from mold.publish import next_issue_id, promote_qa_to_prod
 
@@ -31,6 +32,10 @@ def main() -> int:
     except EmptyField as e:
         # No field, no issue — an empty zine is worse than a missed week.
         print(f"FIELD EMPTY — no issue published: {e}")
+        return 1
+    except GroundednessFailed as e:
+        # Unsourced = rejected. A missed week beats an ungrounded issue.
+        print(f"GROUNDEDNESS FAILED — nothing committed: {e}")
         return 1
 
     planning = ctx["planning"]

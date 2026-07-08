@@ -277,7 +277,8 @@ def _render_page(issue_id: str, theme: str, editors_note: str,
     template_path = Path(__file__).resolve().parents[1] / "templates" / "issue.html"
     if template_path.exists():
         note_html = (
-            f'<aside class="note"><p>{html_mod.escape(editors_note)}</p></aside>'
+            f'<aside class="note"><p class="note-kicker">A note from the Editor</p>'
+            f'<p>{html_mod.escape(editors_note)}</p></aside>'
             if editors_note else ""
         )
         return (
@@ -293,7 +294,8 @@ def _render_page(issue_id: str, theme: str, editors_note: str,
     sections = [_sections_html(authors)]
 
     note_html = (
-        f'\n  <aside class="note"><p>{html_mod.escape(editors_note)}</p></aside>'
+        f'\n  <aside class="note"><p class="note-kicker">A note from the Editor</p>'
+        f'<p>{html_mod.escape(editors_note)}</p></aside>'
         if editors_note else ""
     )
 

@@ -15,6 +15,16 @@ def messages(base_prompt: str, task: str) -> Sequence[Message]:
     ]
 
 
+def evidence_block(evidence) -> str:
+    """Render PERCEIVE's deep-verify output for an author prompt."""
+    if not evidence:
+        return "EVIDENCE: none returned — you cannot write; say so in one line."
+    lines = ["EVIDENCE (current, dated, sourced — these facts and no others):"]
+    for e in evidence:
+        lines.append(f"- {e.title} (published {e.published}) {e.url}\n  {e.summary}")
+    return "\n".join(lines)
+
+
 PROSE_RULES = (
     "\n\nFORM: plain prose paragraphs separated by blank lines. No markdown "
     "headings, no bold titles, no bullet lists — the Editor writes your "
