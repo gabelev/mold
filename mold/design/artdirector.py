@@ -304,6 +304,7 @@ def _render_page(issue_id: str, theme: str, editors_note: str,
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <title>MOLD — Issue {issue_id}: {theme_esc}</title>
 <style>
 :root {{
