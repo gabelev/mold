@@ -95,9 +95,15 @@ def main(argv: list[str]) -> int:
            "planning": Artifact(kind="planning", body="", metadata={"theme": theme})}
     design = ArtDirectorAgent(cfg.model, taboo=taboo, constraint=constraint).run(ctx)
 
+    from mold.design.brief import design_brief
+
+    brief = design_brief(editor, design, authors, load_taboo_signatures(cfg.content_root))
     vcs = LocalGitVCS(cfg.content_root, author="mold-bot <bot@mold.zine>")
     result = vcs.write_and_commit(
-        {f"issues/{issue_id}/index.html": design.body},
+        {
+            f"issues/{issue_id}/index.html": design.body,
+            f"issues/{issue_id}/claude-design-brief.md": brief,
+        },
         message=f"issue {issue_id}: reskin ({constraint}, accent {design.metadata.get('accent')})",
         branch="qa",
     )

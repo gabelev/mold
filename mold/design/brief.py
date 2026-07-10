@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from ensemble.agent import Artifact
 
-from mold.design.palette import GAMUT, PALETTE
+# palette no longer templated into the brief; the electric palette is inlined above
 
 
 def design_brief(issue: Artifact, design: Artifact, authors: list[Artifact],
@@ -27,7 +27,6 @@ def design_brief(issue: Artifact, design: Artifact, authors: list[Artifact],
             f"(the form must ENACT this)\n"
             f"- opens: {a.body.strip()[:220]}…"
         )
-    palette_rows = "\n".join(f"- `{name}`: `{hexv}`" for name, hexv in PALETTE.items())
     assignments = "\n".join(
         f"- {a['section']}: {a['primitive']} {a['params']}"
         for a in design.metadata.get("assignments", [])
@@ -37,8 +36,29 @@ def design_brief(issue: Artifact, design: Artifact, authors: list[Artifact],
     return f"""# Claude Design brief — MOLD Issue {issue_id}: {theme}
 
 Design ONE bespoke, infinite-scroll issue page for MOLD, an autonomous zine
-about AI culture. Ray Gun but AI: the design IS the editorial position; the
-form of each piece must enact the writer's stance toward its subject.
+about AI culture. Ray Gun / David Carson but AI: the design IS the editorial
+position; the form of each piece must ENACT the writer's stance toward it.
+
+## THE LOOK — BOLD, LOUD, ELECTRIC (this is the whole brief)
+Match the MOLD home page's energy — maximal confidence, clashing saturated
+color, huge display type, scale violence, tilted/colliding elements. This is a
+long-form reading page, so keep the body copy genuinely readable, but spend all
+the chaos on the masthead, headlines, folios, pull-quotes and margins.
+
+DO NOT use muted, earthy, "biological/petri" colors (moss green, teal, beige,
+sludge). That look is dead. Use the electric MOLD palette:
+- ink `#0D0D0D` (near-black ground)   - electric yellow `#EBFF00`
+- hot pink `#FF1FB4`                   - klein blue `#2418FF`
+- acid green `#7CFF00`                 - orange `#FF6A00`
+- bone `#F4F1E8` (off-white body text on the dark ground)
+Near-black gallery ground, off-white body, and ONE electric accent shouting per
+piece (color-block inverted sections — e.g. a full electric-yellow block with
+black type — are very on-brand). If a competent designer would call it "too
+much," it's right.
+
+Suggested type: a heavy display face (Anton / Bricolage Grotesque / Archivo
+Black), a dramatic italic serif for deks/quotes (Fraunces / Instrument Serif),
+a readable serif for body (Newsreader), and a mono for labels (Space Mono).
 
 ## The issue
 - Theme (precipitated from the public ledger, named last): **{theme}**
@@ -47,16 +67,12 @@ form of each piece must enact the writer's stance toward its subject.
 
 ## The pieces
 {chr(10).join(pieces)}
+Accent to dominate this issue (the Art Director's pick — one loud color): **{design.metadata.get("accent", "sulphur")}**
 
-## Palette (the biological family — issue pages stay in it)
-{palette_rows}
-Accent chosen by the Art Director this issue: **{design.metadata.get("accent", "viridian")}**
-(gamut: accents {list(GAMUT["accents"])}; the bruise never exceeds ~15% coverage)
-
-## Constraint active this issue (obey it)
+## Constraint active this issue (a structural provocation to obey)
 - **{design.metadata.get("constraint", "house")}**
 
-## Taboo — moves used LAST issue, forbidden now
+## Taboo — moves used LAST issue, forbidden now (keep it never-the-same)
 {taboo_rows}
 
 ## What the autonomous Art Director chose (reference, not obligation)

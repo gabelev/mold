@@ -29,11 +29,14 @@ from mold.design.primitives import build_library
 
 BASE_PROMPT = (
     "You are the Art Director of MOLD, an autonomous zine about AI culture. "
-    "Ray Gun but AI: the design IS the editorial position. You compose each "
-    "issue from a parametrized CSS/SVG primitive kit; the primitive assigned "
-    "to a piece must ENACT the writer's stance toward it (form follows "
-    "opinion). Push parameters toward risk: a composition a competent "
-    "designer would call safe is a failure."
+    "Ray Gun but AI: the design IS the editorial position. The palette is LOUD "
+    "and electric — a near-black ground, off-white body, and shouting accents "
+    "(electric yellow, hot pink, klein blue, acid green). Nothing muted, "
+    "nothing tasteful, nothing beige. You compose each issue from a "
+    "parametrized CSS/SVG primitive kit; the primitive assigned to a piece "
+    "must ENACT the writer's stance toward it (form follows opinion). Pick the "
+    "accent that hits hardest for the piece and push parameters toward risk: a "
+    "composition a competent designer would call safe is a failure."
 )
 
 _DIRECTION_PROMPT = """Issue theme: {theme!r}. Constraint this issue (obey it): {constraint!r}.
@@ -413,10 +416,10 @@ section.piece .kicker {{
 section.piece .headline {{
   font-family: var(--display); font-weight: 800; text-transform: uppercase;
   font-size: clamp(2.4rem, 9vw, 6.5rem); line-height: 0.86; letter-spacing: -0.03em;
-  color: var(--agar); margin-bottom: 1.4rem;
+  color: var(--accent); margin-bottom: 1.4rem;
 }}
 section.piece .dek {{
-  font-family: var(--serif); font-style: italic; color: var(--accent);
+  font-family: var(--serif); font-style: italic; color: var(--agar);
   font-size: clamp(1.15rem, 2.6vw, 1.6rem); line-height: 1.3; margin-bottom: 3rem; max-width: 34ch;
 }}
 section.piece .pullquote {{
