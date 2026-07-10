@@ -16,6 +16,7 @@ PALETTE = {
     "chartreuse": "#7cff00",  # ACID GREEN (accent)
     "sulphur": "#ebff00",     # ELECTRIC YELLOW (accent / the iconic shout)
     "bruise": "#ff1fb4",      # HOT PINK (accent)
+    "orange": "#ff6a00",      # ORANGE (accent / color block)
     "spore": "#8a8f98",       # neutral gray — labels, rules, folios
 }
 

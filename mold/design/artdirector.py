@@ -315,11 +315,12 @@ def _render_page(issue_id: str, theme: str, editors_note: str,
         )
 
     note_html = (
-        f'\n  <aside class="note"><p class="note-kicker">❦ From the Editor</p>'
+        f'\n  <aside class="note"><p class="note-kicker">From the Editor</p>'
         f'<p>{html_mod.escape(editors_note)}</p></aside>'
         if editors_note else ""
     )
 
+    P = PALETTE
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -328,128 +329,132 @@ def _render_page(issue_id: str, theme: str, editors_note: str,
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Fraunces:ital,opsz,wght@1,9..144,400..600&family=Newsreader:opsz,wght@6..72,400..500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Serif:ital@0;1&family=Newsreader:opsz,wght@6..72,400..500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <title>MOLD — Issue {issue_id}: {theme_esc}</title>
 <style>
 :root {{
-  --substrate: {PALETTE["substrate"]};
-  --agar: {PALETTE["agar"]};
-  --viridian: {PALETTE["viridian"]};
-  --chartreuse: {PALETTE["chartreuse"]};
-  --sulphur: {PALETTE["sulphur"]};
-  --bruise: {PALETTE["bruise"]};
-  --spore: {PALETTE["spore"]};
-  --accent: {accent_hex};
-  --display: "Bricolage Grotesque", system-ui, sans-serif;
-  --serif: "Fraunces", Georgia, serif;
+  --substrate: {P["substrate"]}; --agar: {P["agar"]};
+  --viridian: {P["viridian"]}; --chartreuse: {P["chartreuse"]};
+  --sulphur: {P["sulphur"]}; --bruise: {P["bruise"]}; --orange: {P["orange"]};
+  --spore: {P["spore"]}; --accent: {accent_hex};
+  --display: "Anton", system-ui, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
   --body: "Newsreader", Georgia, serif;
   --mono: "Space Mono", ui-monospace, monospace;
+  --bg: var(--sulphur); --fg: var(--substrate); --pop: var(--viridian);
 }}
 * {{ margin: 0; box-sizing: border-box; }}
 html, body {{ overflow-x: clip; }}
-body {{ background: var(--substrate); color: var(--agar); font-family: var(--body); }}
-::selection {{ background: var(--accent); color: var(--substrate); }}
-a {{ color: var(--accent); text-underline-offset: 3px; }}
+body {{ background: var(--sulphur); color: var(--substrate); font-family: var(--body); font-size: clamp(1.05rem, 1.35vw, 1.25rem); }}
+::selection {{ background: var(--bruise); color: var(--sulphur); }}
 
-/* ---- masthead: the theme breaks the left edge ---- */
+/* ---- masthead: electric yellow, the wordmark theme in black ---- */
 header.masthead {{
-  min-height: 94vh; padding: clamp(1.5rem, 5vw, 4rem);
-  display: grid; grid-template-rows: auto 1fr auto; position: relative; isolation: isolate;
+  min-height: 96vh; padding: clamp(1.5rem, 5vw, 4rem); background: var(--sulphur); color: var(--substrate);
+  display: grid; grid-template-rows: auto 1fr auto; position: relative; isolation: isolate; overflow: clip;
 }}
-header.masthead::before {{
-  content: ""; position: absolute; inset: -8%; z-index: -1;
-  background:
-    radial-gradient(ellipse 70% 55% at 12% 82%, var(--accent), transparent 60%),
-    radial-gradient(ellipse 48% 38% at 88% 18%, {PALETTE["bruise"]}88, transparent 70%);
-  filter: url(#bloom); opacity: 0.55;
+header.masthead .blob {{
+  position: absolute; z-index: 0; width: clamp(200px, 42vw, 620px); height: auto;
+  top: -8%; right: -8%; pointer-events: none;
+}}
+header.masthead .bar {{
+  position: absolute; z-index: 0; left: -6%; bottom: 16%; width: 62%; height: clamp(30px, 6vw, 84px);
+  background: var(--bruise); transform: rotate(-6deg);
 }}
 .folio-top {{
-  display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
-  font-family: var(--mono); font-size: clamp(0.7rem, 1.4vw, 0.95rem);
-  letter-spacing: 0.28em; text-transform: uppercase; color: var(--spore);
+  position: relative; z-index: 2; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  font-family: var(--mono); font-weight: 700; font-size: clamp(0.7rem, 1.4vw, 0.95rem);
+  letter-spacing: 0.28em; text-transform: uppercase;
 }}
 header.masthead h1 {{
-  align-self: center;
-  font-family: var(--display); font-weight: 800; text-transform: uppercase;
-  font-size: clamp(3.4rem, 21vw, 17rem); line-height: 0.8; letter-spacing: -0.04em;
-  color: var(--sulphur); margin-left: -0.06em; max-width: 14ch;
-  text-wrap: balance;
+  position: relative; z-index: 1; align-self: center;
+  font-family: var(--display); text-transform: uppercase;
+  font-size: clamp(3.8rem, 23vw, 19rem); line-height: 0.82; letter-spacing: -0.02em;
+  color: var(--substrate); margin-left: -0.04em; max-width: 15ch; text-wrap: balance;
 }}
 header.masthead .strap {{
-  font-family: var(--serif); font-style: italic; font-size: clamp(1rem, 2.4vw, 1.7rem);
-  color: var(--agar); opacity: 0.9; max-width: 40ch;
+  position: relative; z-index: 2; font-family: var(--serif); font-style: italic;
+  font-size: clamp(1.1rem, 2.6vw, 1.9rem); color: var(--substrate); max-width: 44ch;
 }}
 
-/* ---- editor's note: a designed band ---- */
-aside.note {{
-  padding: clamp(3rem, 8vw, 8rem) clamp(1.5rem, 5vw, 5rem);
-  max-width: 60rem; border-left: 4px solid var(--accent); margin: 6vh 0;
-}}
+/* ---- editor's note: a hard black band ---- */
+aside.note {{ background: var(--substrate); color: var(--agar); padding: clamp(3rem, 9vw, 9rem) clamp(1.5rem, 5vw, 5rem); }}
 aside.note .note-kicker {{
-  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.28em;
-  text-transform: uppercase; color: var(--accent); margin-bottom: 1.2rem;
+  font-family: var(--mono); font-weight: 700; font-size: 0.8rem; letter-spacing: 0.3em;
+  text-transform: uppercase; color: var(--sulphur); margin-bottom: 1.4rem;
 }}
 aside.note p:last-child {{
-  font-family: var(--serif); font-style: italic; line-height: 1.4;
-  font-size: clamp(1.3rem, 3.4vw, 2.3rem); color: var(--agar);
+  font-family: var(--serif); font-style: italic; line-height: 1.32;
+  font-size: clamp(1.5rem, 4.4vw, 3rem); max-width: 24ch; color: var(--agar);
 }}
+aside.note p:last-child::first-letter {{ color: var(--chartreuse); }}
 
-/* ---- pieces: asymmetric spreads, folio + pullquote in the margins ---- */
-main {{ counter-reset: piece; }}
+/* ---- pieces: full-bleed color blocks, cycling like the home archive ---- */
 section.piece {{
-  position: relative; padding: 12vh clamp(1.5rem, 5vw, 5rem);
+  --bg: var(--sulphur); --fg: var(--substrate); --pop: var(--viridian);
+  background: var(--bg); color: var(--fg); position: relative; overflow: clip;
+  overflow-clip-margin: 8vw;
+  padding: clamp(4rem, 12vh, 12rem) clamp(1.5rem, 5vw, 5rem);
   display: grid; column-gap: clamp(1.5rem, 4vw, 4rem);
   grid-template-columns: minmax(0, 1fr) minmax(0, 44rem) minmax(0, 1fr);
-  border-top: 1px solid {PALETTE["spore"]}44;
+  grid-auto-rows: min-content; align-content: start;
 }}
-section.piece > * {{ grid-column: 2; }}   /* content column by default */
+/* the cycle: yellow / pink / blue / orange / black */
+section.piece:nth-of-type(5n+2) {{ --bg: var(--bruise); --fg: var(--substrate); --pop: var(--viridian); }}
+section.piece:nth-of-type(5n+3) {{ --bg: var(--viridian); --fg: var(--agar);      --pop: var(--sulphur);  }}
+section.piece:nth-of-type(5n+4) {{ --bg: var(--orange);  --fg: var(--substrate); --pop: var(--viridian); }}
+section.piece:nth-of-type(5n+5) {{ --bg: var(--substrate); --fg: var(--agar);    --pop: var(--chartreuse); }}
+section.piece > * {{ grid-column: 2; position: relative; z-index: 1; }}
 section.piece .folio {{
-  grid-column: 1; grid-row: 1 / span 3; justify-self: end; align-self: start;
-  font-family: var(--display); font-weight: 800; font-size: clamp(3rem, 9vw, 8rem);
-  line-height: 0.8; color: transparent; -webkit-text-stroke: 1.5px var(--spore);
-  position: sticky; top: 8vh; transform: rotate(-8deg);
+  position: absolute; top: clamp(1.5rem, 5vh, 4rem); left: clamp(1rem, 2vw, 2.5rem); z-index: 0;
+  font-family: var(--display); font-size: clamp(3.5rem, 10vw, 9rem); line-height: 0.8;
+  color: transparent; -webkit-text-stroke: 2px var(--pop); transform: rotate(-8deg); opacity: 0.85;
 }}
 section.piece .kicker {{
-  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.3em;
-  text-transform: uppercase; color: var(--accent); margin-bottom: 1rem;
+  font-family: var(--mono); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.3em;
+  text-transform: uppercase; color: var(--pop); margin-bottom: 1.1rem;
 }}
 section.piece .headline {{
-  font-family: var(--display); font-weight: 800; text-transform: uppercase;
-  font-size: clamp(2.4rem, 9vw, 6.5rem); line-height: 0.86; letter-spacing: -0.03em;
-  color: var(--accent); margin-bottom: 1.4rem;
+  font-family: var(--display); text-transform: uppercase;
+  font-size: clamp(2.6rem, 9vw, 6.5rem); line-height: 0.96; letter-spacing: -0.01em;
+  color: var(--fg); margin-bottom: 1.4rem;
 }}
 section.piece .dek {{
-  font-family: var(--serif); font-style: italic; color: var(--agar);
-  font-size: clamp(1.15rem, 2.6vw, 1.6rem); line-height: 1.3; margin-bottom: 3rem; max-width: 34ch;
+  font-family: var(--serif); font-style: italic; color: var(--pop);
+  font-size: clamp(1.2rem, 2.8vw, 1.8rem); line-height: 1.28; margin-bottom: 3rem; max-width: 32ch;
 }}
+/* pull-quote is a big in-flow callout between the dek and the body — bold and
+   collision-proof (it's in the content column, not floated) */
 section.piece .pullquote {{
-  grid-column: 3; align-self: center; margin: 2rem 0;
-  font-family: var(--display); font-weight: 700; font-size: clamp(1.4rem, 3vw, 2.4rem);
-  line-height: 1.02; color: var(--sulphur); border: none; quotes: none;
-  transform: rotate(3deg);
+  grid-column: 2; margin: 0.5rem 0 2.8rem; max-width: 20ch;
+  quotes: none; border: none; border-top: 4px solid var(--pop);
+  padding-top: 1rem; color: var(--pop); transform: rotate(-1.5deg);
+  font-family: var(--display); font-size: clamp(1.7rem, 4vw, 3rem); line-height: 0.98;
+  text-transform: uppercase;
 }}
-section.piece .body {{ font-size: clamp(1.02rem, 1.3vw, 1.18rem); line-height: 1.62; }}
+section.piece .body {{ line-height: 1.6; max-width: 40rem; }}
 section.piece .body p {{ margin-bottom: 1.15em; }}
-section.piece .body p:first-of-type {{ font-size: 1.14em; }}
+section.piece .body p:first-of-type {{ font-size: 1.15em; }}
+section.piece .body a {{ color: var(--pop); text-decoration-thickness: 2px; text-underline-offset: 3px; }}
 
-/* alternate the rhythm: even pieces flip folio + pullquote sides */
-section.piece:nth-of-type(even) .folio {{ grid-column: 3; justify-self: start; transform: rotate(8deg); }}
-section.piece:nth-of-type(even) .pullquote {{ grid-column: 1; transform: rotate(-3deg); text-align: right; }}
+section.piece:nth-of-type(even) .folio {{ left: auto; right: clamp(1rem, 2vw, 2.5rem); transform: rotate(8deg); }}
+section.piece:nth-of-type(even) .pullquote {{ margin-left: auto; text-align: right; transform: rotate(1.5deg); }}
 
 @media (max-width: 900px) {{
   section.piece {{ grid-template-columns: 1fr; }}
-  section.piece > *, section.piece:nth-of-type(even) > * {{ grid-column: 1; }}
-  section.piece .folio {{ position: static; grid-row: auto; justify-self: start; font-size: 3.5rem; transform: none; margin-bottom: 1rem; }}
-  section.piece .pullquote {{ transform: none; text-align: left; border-left: 3px solid var(--accent); padding-left: 1rem; }}
-  section.piece:nth-of-type(even) .pullquote {{ text-align: left; }}
+  section.piece > * {{ grid-column: 1; }}
+  section.piece .folio {{ position: static; font-size: 3.5rem; transform: none; margin-bottom: 0.5rem; opacity: 1; }}
+  section.piece:nth-of-type(even) .folio {{ right: auto; }}
+  section.piece .pullquote,
+  section.piece:nth-of-type(even) .pullquote {{ grid-column: 1; margin-left: 0; max-width: none; text-align: left; transform: rotate(-1.5deg); }}
 }}
 
 footer {{
-  padding: 10vh clamp(1.5rem, 5vw, 5rem) 6vh;
-  font-family: var(--mono); font-size: 0.8rem; line-height: 1.9;
-  color: var(--spore); border-top: 3px solid var(--accent);
+  background: var(--substrate); color: var(--agar);
+  padding: clamp(4rem, 10vh, 10rem) clamp(1.5rem, 5vw, 5rem) 6vh;
+  font-family: var(--mono); font-size: 0.82rem; line-height: 1.9;
 }}
-footer a {{ color: var(--viridian); }}
+footer a {{ color: var(--chartreuse); }}
 /* ---- composed primitives (this issue's moves) ---- */
 {css}
 </style>
@@ -457,11 +462,13 @@ footer a {{ color: var(--viridian); }}
 <body>
 <svg width="0" height="0" aria-hidden="true">
   <filter id="bloom">
-    <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="4" seed="7" result="noise"/>
-    <feDisplacementMap in="SourceGraphic" in2="noise" scale="60"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="11" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="70"/>
   </filter>
 </svg>
 <header class="masthead" id="masthead">
+  <svg class="blob" viewBox="0 0 400 400" aria-hidden="true"><circle cx="200" cy="200" r="150" fill="{accent_hex}" filter="url(#bloom)"/></svg>
+  <div class="bar" aria-hidden="true"></div>
   <p class="folio-top"><span>MOLD</span><span>Issue {issue_id}</span><span>grown, not written</span></p>
   <h1>{theme_esc}</h1>
   <p class="strap">An autonomous zine about AI culture. The theme precipitated from the public ledger; the Namer titled it last.</p>

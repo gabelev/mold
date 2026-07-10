@@ -48,16 +48,15 @@ class ColonizationOverlay:
     def render(self, params: Mapping[str, Any]) -> str:
         s = params["section"]
         coverage = float(params.get("coverage", 0.5))
-        accent = PALETTE[params.get("accent", "viridian")]
         return f"""
 /* colonization: {s} */
 #{s} {{ position: relative; isolation: isolate; }}
 #{s}::after {{
   content: ""; position: absolute; inset: -6%; pointer-events: none;
   background:
-    radial-gradient(ellipse 120% 60% at 8% 108%, {accent}dd, transparent 62%),
-    radial-gradient(ellipse 60% 44% at 92% 96%, {accent}99, transparent 70%);
-  filter: url(#bloom); mix-blend-mode: screen; opacity: 0; z-index: 2;
+    radial-gradient(ellipse 120% 60% at 8% 108%, var(--pop), transparent 62%),
+    radial-gradient(ellipse 60% 44% at 92% 96%, var(--pop), transparent 70%);
+  filter: url(#bloom); mix-blend-mode: multiply; opacity: 0; z-index: 2;
 }}
 @supports (animation-timeline: view()) {{
   #{s}::after {{ animation: colonize-{s} linear both; animation-timeline: view(); animation-range: entry 0% cover 88%; }}
@@ -90,7 +89,7 @@ class CollisionType:
 #{s} .headline {{ position: relative; transform: rotate({angle:.2f}deg); }}
 #{s} .headline::before {{
   content: attr(data-text); position: absolute; left: {overlap:.2f}em; top: {overlap * 0.55:.2f}em;
-  color: {PALETTE["bruise"]}; mix-blend-mode: difference; z-index: -1;
+  color: var(--pop); mix-blend-mode: difference; z-index: -1;
 }}
 """
 
@@ -158,13 +157,12 @@ class Bleed:
         side = params.get("side", "left")
         edge = "margin-left" if side == "left" else "margin-right"
         return f"""
-/* bleed: {s} ({side}) */
+/* bleed: {s} ({side}) — oversized headline pushed toward the edge (still wraps) */
 #{s} .headline {{
-  font-size: clamp(3rem, 20vw, 14rem); line-height: 0.82; letter-spacing: -0.05em;
-  {edge}: -{of * 40:.0f}vw; max-width: none; white-space: nowrap;
-  color: {PALETTE["sulphur"]}; text-align: {side};
+  font-size: clamp(3rem, 13vw, 9.5rem); line-height: 0.92; letter-spacing: -0.03em;
+  {edge}: -{of * 10:.0f}vw; color: var(--pop);
 }}
-@media (max-width: 720px) {{ #{s} .headline {{ white-space: normal; {edge}: -4vw; font-size: clamp(2.4rem, 15vw, 5rem); }} }}
+@media (max-width: 720px) {{ #{s} .headline {{ {edge}: -3vw; font-size: clamp(2.4rem, 14vw, 5rem); }} }}
 """
 
 
@@ -184,13 +182,12 @@ class ScaleViolence:
     def render(self, params: Mapping[str, Any]) -> str:
         s = params["section"]
         ratio = float(params.get("ratio", 2.4))
-        accent = PALETTE[params.get("accent", "chartreuse")]
         return f"""
 /* scale-violence: {s} */
 #{s} .body > p:first-of-type::first-letter {{
   float: left; font-family: var(--display); font-weight: 800; line-height: 0.7;
   font-size: {ratio * 3.2:.1f}em; padding: 0.02em 0.12em 0 0; margin-top: 0.06em;
-  color: {accent}; -webkit-text-stroke: 1px {PALETTE["substrate"]};
+  color: var(--pop); -webkit-text-stroke: 2px var(--bg);
 }}
 #{s} .headline {{ font-size: clamp(2rem, {5 + ratio * 1.5:.0f}vw, {4 + ratio:.0f}rem); }}
 """
@@ -215,7 +212,7 @@ class BrokenColumn:
         jit = float(params.get("jitter", 2.0))
         return f"""
 /* broken-column: {s} */
-#{s} .body {{ columns: {cols}; column-gap: clamp(1.2rem, 3vw, 2.6rem); column-rule: 1px solid {PALETTE["spore"]}55; }}
+#{s} .body {{ columns: {cols}; column-gap: clamp(1.2rem, 3vw, 2.6rem); column-rule: 2px solid var(--pop); }}
 #{s} .body p {{ break-inside: avoid; }}
 #{s} .body p:nth-child(3n+2) {{ transform: rotate({jit:.1f}deg); }}
 #{s} .body p:nth-child(3n) {{ transform: rotate({-jit * 0.7:.1f}deg); }}
@@ -242,7 +239,7 @@ class Marginalia:
   #{s} .dek {{
     writing-mode: {wm}; position: absolute; {side}: clamp(0.5rem, 2vw, 2rem); top: 0;
     max-width: none; margin: 0; text-orientation: mixed; letter-spacing: 0.02em;
-    border-{side}: 2px solid var(--accent); padding-{side}: 0.6rem;
+    border-{side}: 3px solid var(--pop); padding-{side}: 0.6rem;
   }}
   #{s} {{ position: relative; }}
 }}
