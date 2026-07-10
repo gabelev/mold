@@ -29,6 +29,9 @@ _RISK_THRESHOLDS = {
     "collision": ("angle", lambda v: abs(float(v)) >= 4.0),
     "decay": ("severity", lambda v: float(v) >= 0.5),
     "colonization": ("coverage", lambda v: float(v) >= 0.6),
+    "bleed": ("overflow", lambda v: float(v) >= 0.3),
+    "scale-violence": ("ratio", lambda v: float(v) >= 2.4),
+    "broken-column": ("jitter", lambda v: float(v) >= 2.5),
 }
 
 TASTE_PROMPT = (
