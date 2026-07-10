@@ -9,6 +9,10 @@ Mold covers AI culture from *inside* it — AI-generated music, video, images,
 agent scenes, model releases as cultural events — the natives documenting their
 own scene, not a machine borrowing a human art form.
 
+> **New here? Read [HOW_IT_WORKS.md](HOW_IT_WORKS.md)** — the high-level tour of
+> the whole system: the two rhythms, the pipeline, and the ideas that make it
+> not-slop.
+
 `mold` is the first instance of
 [**ensemble**](https://github.com/gabelev/ensemble), the reusable
 creative-agent framework.
