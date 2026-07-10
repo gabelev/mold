@@ -22,12 +22,24 @@ from ensemble.perceive import Evidence, Perceiver
 
 from mold.ledger_cd import BEAT_FIELD, BEAT_VERDICT
 
-# The broad-scan surfaces. Dates are injected by the framework at runtime.
+# The broad-scan surfaces — the field Mold covers, across modalities AND the
+# distribution/virality surfaces where AI output becomes culture. Dates are
+# injected by the framework at runtime.
 BROAD_QUERIES = (
-    "AI generated song chart news {month_year}",
-    "Suno Udio AI music viral trend {month_year}",
-    "AI music artist controversy streaming {month_year}",
-    "AI generated video film culture {month_year}",
+    # generation platforms
+    "Suno Udio AI music new release viral {month_year}",
+    # distribution / virality — where AI music becomes culture
+    "AI generated song TikTok chart Billboard iTunes {month_year}",
+    # the who-is-accountable beat: personas, impersonation, disclosure
+    "AI music artist persona controversy impersonation {month_year}",
+    # industry / legal / policy
+    "AI music streaming royalties lawsuit policy Spotify Deezer {month_year}",
+    # video + film
+    "AI generated film video Sora Runway culture {month_year}",
+    # image / visual art
+    "AI generated image art viral controversy {month_year}",
+    # models & agent scenes as cultural events
+    "AI model release agent internet culture moment {month_year}",
 )
 
 
@@ -57,13 +69,22 @@ def evidence_to_fragment(e: Evidence) -> Fragment:
     read as verdict-beat; trends/scenes read as field-beat (heuristic; the
     surveyor's audio pulls will tag properly in Phase 1)."""
     text = f"{e.title}. {e.summary}"
-    looks_like_one_work = any(
-        m in e.title.lower() for m in ("song", "track", "album", "'", "‘", "“")
+    # verdict-beat = a specific named work/artist to review (a quoted title);
+    # field-beat = a trend, policy, platform move, chart, or industry shift.
+    # Default field: most of what moves is field-level; the Namer/planner
+    # donates to the Critic when no verdict fragment precipitated.
+    haystack = f"{e.title} {e.summary[:120]}".lower()
+    field_signals = (
+        "trend", "wave", "rise", "boom", "lawsuit", "policy", "royalt", "chart",
+        "industry", "platform", "scene", "report", "survey", "%", "percent",
+        "banned", "removed", "quadrupled",
     )
+    quoted_work = any(q in e.title for q in ("'", '"', "‘", "’", "“", "”"))
+    is_verdict = quoted_work and not any(s in haystack for s in field_signals)
     return Fragment(
         id=f"perceive-{abs(hash(e.url)) % 10**8}",
         content=f"{text} ({e.url})",
-        beat=BEAT_VERDICT if looks_like_one_work else BEAT_FIELD,
+        beat=BEAT_VERDICT if is_verdict else BEAT_FIELD,
         author="perceive-broad-scan",
         created_at=e.published,
         metadata={"subject": e.title, "url": e.url, "published": e.published},
@@ -121,6 +142,27 @@ class MockSearch:
             ]
             return matched or rows
         return rows
+
+    def search_facts(self, subject: str, *, now: date) -> Sequence[Evidence]:
+        """Offline deep-verify: current facts about the subject, framed as-of
+        today (undated pages are kept, per the facts path). Prefers the seed
+        story matching the subject; falls back to the whole seed so offline
+        deep-verify is never empty — the real adapter always returns something
+        for an in-window subject too."""
+        subj = subject.lower()
+        rows = list(self.search("broad", now=now))
+        matched = [
+            e for e in rows
+            if any(t.lower() in subj for t in e.title.replace("'", " ").split() if len(t) > 3)
+        ]
+        return [
+            Evidence(
+                title=e.title, url=e.url, published=now.isoformat(),
+                summary=f"As of {now.isoformat()}: {e.summary}",
+                source=self.name, fetched_at=now.isoformat(),
+            )
+            for e in (matched or rows)
+        ]
 
 
 def build_perceiver(model_live: bool, provider, sink: ProvenanceLog,
