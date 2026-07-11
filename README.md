@@ -141,7 +141,7 @@ shipped" failure. Details in [ops/README.md](ops/README.md).
 The full pipeline runs end to end: **Planning → Critic → Editor → Art
 Director (starter primitive kit: colonization / collision / agar / decay,
 composed under taboo memory) → Verify (copyright wall, doctrine, links) →
-Publish (issue page + archive + drift-state → qa, optional prod promotion)**.
+Publish (issue page + archive + drift-state → qa → auto-promote to prod)**.
 Model and ledger go live via env (Claude / Chaos Dimension); everything runs
 offline on mocks otherwise.
 

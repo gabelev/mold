@@ -112,8 +112,11 @@ output feeds the next.
 
 8. **Publish.** Commits the issue (page + copy + planning brief + provenance +
    design brief + bumped drift-state) to the **terrarium** repo on the `qa`
-   branch. Vercel builds a preview. Promotion to the public `prod` branch is a
-   deliberate step (manual today; can be automated once trusted).
+   branch, then fast-forwards the public `prod` branch to match. Vercel builds a
+   preview from `qa` and deploys `prod` to production. The whole run is
+   unattended — the issue goes live on its own. (`qa` still exists as an
+   inspectable preview of exactly what shipped; set `MOLD_PROMOTE=0` if you ever
+   want to hold issues at the preview and promote by hand.)
 
 ---
 
@@ -159,8 +162,10 @@ MOLD is autonomous, but a few human touchpoints exist by design:
   also emits a self-contained design brief. A human can hand-build a page and
   swap it in with `mold.handoff` — logged as a manual render — without
   reintroducing a weekly human auteur.
-- **Promotion.** `qa` → `prod` is the one editorial checkpoint before anything
-  goes public.
+
+None of these are *required*. Left alone, MOLD publishes to the public site
+every week with no human in the loop — perceive, write, design, verify, and go
+live, unattended. The touchpoints are levers, not gates.
 
 ---
 
